@@ -1,0 +1,23 @@
+#![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
+#![doc = include_str!("../README.md")]
+
+#[cfg(feature = "build")]
+pub mod build;
+#[cfg(feature = "terminal")]
+pub mod clap;
+#[cfg(feature = "terminal")]
+pub mod error;
+#[cfg(feature = "imap")]
+pub mod imap;
+#[cfg(feature = "terminal")]
+pub mod log;
+#[cfg(feature = "terminal")]
+pub mod printer;
+#[cfg(feature = "prompt")]
+pub mod prompt;
+#[cfg(feature = "table")]
+pub mod table;
+#[cfg(feature = "prompt")]
+pub mod validator;
+#[cfg(feature = "wizard")]
+pub mod wizard;

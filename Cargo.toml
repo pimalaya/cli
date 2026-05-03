@@ -1,0 +1,50 @@
+[package]
+name = "pimalaya-cli"
+description = "Collection of CLI tools for Pimalaya"
+version = "0.0.1"
+authors = ["soywod <clement.douin@posteo.net>"]
+rust-version = "1.56"
+edition = "2021"
+license = "MIT"
+categories = []
+keywords = ["pimalaya", "cli"]
+homepage = "https://pimalaya.org"
+documentation = "https://docs.rs/pimalaya-cli/latest/pimalaya_cli"
+repository = "https://github.com/pimalaya/cli"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[features]
+default = ["prompt", "wizard", "imap", "terminal", "build", "table"]
+prompt = ["dep:inquire", "dep:secrecy", "dep:thiserror"]
+imap = ["dep:secrecy"]
+wizard = ["prompt", "dep:io-discovery"]
+terminal = ["dep:anyhow", "dep:clap", "dep:clap_complete", "dep:clap_mangen", "dep:env_logger", "dep:serde", "dep:serde_json", "dep:shellexpand"]
+build = ["dep:git2", "dep:serde", "dep:toml"]
+table = ["dep:comfy-table"]
+
+[dependencies]
+anyhow = { version = "1", optional = true }
+clap = { version = "4.4", default-features = false, features = ["std", "derive"], optional = true }
+clap_complete = { version = "4.4", optional = true }
+clap_mangen = { version = "0.3", optional = true }
+comfy-table = { version = "7", optional = true }
+env_logger = { version = "0.11", optional = true }
+git2 = { version = "0.20", default-features = false, optional = true }
+inquire = { version = "0.7", optional = true }
+io-discovery = { version = "0.0.1", default-features = false, features = ["autoconfig"], optional = true }
+log = "0.4"
+secrecy = { version = "0.10", features = ["serde"], optional = true }
+serde = { version = "1", features = ["derive"], optional = true }
+serde_json = { version = "1", optional = true }
+shellexpand = { version = "3.1", optional = true }
+thiserror = { version = "2", optional = true }
+toml = { version = "0.8", optional = true }
+
+[patch.crates-io]
+domain.path = "../../domain"
+io-discovery.path = "../io-discovery"
+io-http.path = "../io-http"
+pimalaya-toolbox.path = "../toolbox"
