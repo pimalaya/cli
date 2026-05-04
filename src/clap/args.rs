@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
-use clap::Parser;
+use clap::{Parser, ValueEnum};
+use log::LevelFilter;
 
 use super::parsers::path_parser;
 
@@ -54,35 +55,42 @@ pub struct JsonFlag {
     pub enabled: bool,
 }
 
-/// The quiet, debug and trace flag parsers.
+/// The log level flag parser.
 #[derive(Debug, Default, Parser)]
 pub struct LogFlags {
-    /// Disable all logs.
+    /// Filter log output by level.
     ///
-    /// Same as running command with `RUST_LOG=off` environment
-    /// variable.
-    #[arg(long, alias = "silent", global = true)]
-    #[arg(conflicts_with = "debug")]
-    #[arg(conflicts_with = "trace")]
-    pub quiet: bool,
+    /// The `RUST_LOG` environment variable, when set, overrides this
+    /// flag and supports per-target filters (see the `env_logger`
+    /// documentation).
+    #[arg(long = "log", global = true, name = "log")]
+    #[arg(value_enum, value_name = "LEVEL", default_value_t)]
+    pub level: LogLevel,
+}
 
-    /// Enable debug logs.
-    ///
-    /// Same as running command with `RUST_LOG=debug` environment
-    /// variable.
-    #[arg(long, global = true)]
-    #[arg(conflicts_with = "quiet")]
-    #[arg(conflicts_with = "trace")]
-    pub debug: bool,
+/// Log level matching [`log::LevelFilter`].
+#[derive(Debug, Default, Clone, Copy, ValueEnum)]
+pub enum LogLevel {
+    #[default]
+    Off,
+    Error,
+    Warn,
+    Info,
+    Debug,
+    Trace,
+}
 
-    /// Enable verbose trace logs with backtrace.
-    ///
-    /// Same as running command with `RUST_LOG=trace` and
-    /// `RUST_BACKTRACE=1` environment variables.
-    #[arg(long, alias = "verbose", global = true)]
-    #[arg(conflicts_with = "quiet")]
-    #[arg(conflicts_with = "debug")]
-    pub trace: bool,
+impl From<LogLevel> for LevelFilter {
+    fn from(level: LogLevel) -> Self {
+        match level {
+            LogLevel::Off => Self::Off,
+            LogLevel::Error => Self::Error,
+            LogLevel::Warn => Self::Warn,
+            LogLevel::Info => Self::Info,
+            LogLevel::Debug => Self::Debug,
+            LogLevel::Trace => Self::Trace,
+        }
+    }
 }
 
 #[macro_export]
