@@ -1,4 +1,4 @@
-use io_discovery::autoconfig::serde::{AutoConfig, SecurityType, ServerType};
+use io_discovery::autoconfig::types::{Autoconfig, SecurityType, ServerType};
 
 use crate::{
     imap::{Encryption, ImapAuth, ImapConfig, ImapSecret},
@@ -31,7 +31,7 @@ pub fn start(
     account_name: &str,
     email_local_part: &str,
     email_domain: &str,
-    autoconfig: Option<&AutoConfig>,
+    autoconfig: Option<&Autoconfig>,
 ) -> PromptResult<ImapConfig> {
     let autoconfig_server = autoconfig.and_then(|c| {
         c.email_provider

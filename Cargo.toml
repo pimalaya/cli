@@ -33,7 +33,7 @@ clap_mangen = { version = "0.3", optional = true }
 comfy-table = { version = "7", optional = true }
 env_logger = { version = "0.11", optional = true }
 git2 = { version = "0.20", default-features = false, optional = true }
-inquire = { version = "0.7", optional = true }
+inquire = { version = "0.9", optional = true }
 io-discovery = { version = "0.0.1", default-features = false, features = ["autoconfig"], optional = true }
 log = "0.4"
 secrecy = { version = "0.10", features = ["serde"], optional = true }
@@ -44,7 +44,6 @@ thiserror = { version = "2", optional = true }
 toml = { version = "0.8", optional = true }
 
 [patch.crates-io]
-domain.path = "../../domain"
-io-discovery.path = "../io-discovery"
-io-http.path = "../io-http"
-pimalaya-toolbox.path = "../toolbox"
+domain = { git = "https://github.com/soywod/domain", branch = "new-srv" }
+io-discovery.git = "https://github.com/pimalaya/io-discovery"
+io-http.git = "https://github.com/pimalaya/io-http"
