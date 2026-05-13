@@ -57,15 +57,25 @@ pub struct JsonFlag {
 
 /// The log level flag parser.
 #[derive(Debug, Default, Parser)]
-pub struct LogFlags {
+pub struct LogArgs {
     /// Filter log output by level.
     ///
-    /// The `RUST_LOG` environment variable, when set, overrides this
-    /// flag and supports per-target filters (see the `env_logger`
-    /// documentation).
-    #[arg(long = "log", global = true, name = "log")]
-    #[arg(value_enum, value_name = "LEVEL", default_value_t)]
-    pub level: LogLevel,
+    /// When omitted, the `RUST_LOG` environment variable is consulted
+    /// (it supports per-target filters — see the `env_logger`
+    /// documentation). When present, this flag overrides `RUST_LOG`
+    /// entirely.
+    #[arg(name = "log-level", long = "log-level", visible_alias = "log")]
+    #[arg(value_enum, value_name = "LEVEL", global = true)]
+    pub level: Option<LogLevel>,
+
+    /// Append log output to the given file instead of stderr.
+    ///
+    /// Useful when interactive prompts (which always write to stderr)
+    /// would otherwise be intermixed with log lines. The file is
+    /// opened in append mode and created if it does not exist.
+    #[arg(long = "log-file", global = true, name = "log-file")]
+    #[arg(value_name = "PATH", value_parser = path_parser)]
+    pub file: Option<PathBuf>,
 }
 
 /// Log level matching [`log::LevelFilter`].

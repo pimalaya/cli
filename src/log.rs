@@ -1,12 +1,45 @@
-use crate::clap::args::LogFlags;
+use std::fs::OpenOptions;
+
+use env_logger::{Builder, Target};
+
+use crate::clap::args::LogArgs;
 
 pub struct Logger;
 
 impl Logger {
-    pub fn init(log: &LogFlags) {
-        env_logger::Builder::new()
-            .filter_level(log.level.into())
-            .parse_default_env()
-            .init();
+    /// Initialises [`env_logger`] from `log`. When [`LogFlags::file`]
+    /// is set the log target is opened in append mode (creating it
+    /// if missing) and used for output; otherwise logs go to stderr
+    /// as usual.
+    ///
+    /// The file is intentionally opened with [`expect`] — if the
+    /// caller asked for a log file but we cannot create or open it,
+    /// the binary should refuse to run rather than silently fall back
+    /// to stderr and pollute interactive prompts.
+    pub fn init(log: &LogArgs) {
+        let mut builder = Builder::new();
+        match log.level {
+            Some(level) => {
+                // Explicit `--log-level` overrides any `RUST_LOG`.
+                builder.filter_level(level.into());
+            }
+            None => {
+                // Defer to `RUST_LOG` (if unset, env_logger filters
+                // everything — same as `--log-level off`).
+                builder.parse_default_env();
+            }
+        }
+
+        if let Some(path) = &log.file {
+            builder.target(Target::Pipe(Box::new(
+                OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(path)
+                    .expect("log file should be accessible"),
+            )));
+        }
+
+        builder.init();
     }
 }

@@ -16,7 +16,7 @@ impl ErrorReport {
         if let Err(err) = result {
             printer
                 .out(ErrorReport::from(err))
-                .expect("Should write error report to stdout");
+                .expect("should write error report to stdout");
 
             process::exit(1);
         }
@@ -26,19 +26,12 @@ impl ErrorReport {
         self.0.chain().skip(1).map(ToString::to_string)
     }
 
-    fn suggestions(&self) -> Vec<&str> {
-        let mut suggestions = Vec::with_capacity(3);
-
-        if !log_enabled!(Level::Debug) {
-            suggestions.push("Run with --debug to enable debug logs");
+    fn suggestions(&self) -> Option<&str> {
+        if !log_enabled!(Level::Debug) || !log_enabled!(Level::Trace) {
+            Some("Run with --log-level to enable more verbose logs")
+        } else {
+            None
         }
-
-        let backtrace = matches!(self.0.backtrace().status(), BacktraceStatus::Disabled);
-        if !log_enabled!(Level::Trace) && !backtrace {
-            suggestions.push("Run with --trace to enable verbose logs with backtraces");
-        }
-
-        suggestions
     }
 
     fn backtrace(&self) -> Option<&Backtrace> {
@@ -82,16 +75,10 @@ impl fmt::Display for ErrorReport {
             write!(f, "{backtrace}")?;
         }
 
-        let mut header_printed = false;
-        for suggestion in self.suggestions() {
-            if !header_printed {
-                writeln!(f)?;
-                writeln!(f)?;
-                write!(f, "Suggestions:")?;
-                header_printed = true;
-            }
-
+        if let Some(suggestion) = self.suggestions() {
             writeln!(f)?;
+            writeln!(f)?;
+            writeln!(f, "Suggestions:")?;
             write!(f, " - {suggestion}")?;
         }
 

@@ -7,8 +7,6 @@ pub mod build;
 pub mod clap;
 #[cfg(feature = "terminal")]
 pub mod error;
-#[cfg(feature = "imap")]
-pub mod imap;
 #[cfg(feature = "terminal")]
 pub mod log;
 #[cfg(feature = "terminal")]

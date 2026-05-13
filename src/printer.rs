@@ -15,10 +15,6 @@ pub trait PrintTable {
 pub trait Printer {
     fn out<T: fmt::Display + Serialize>(&mut self, data: T) -> Result<()>;
 
-    fn log<T: fmt::Display + Serialize>(&mut self, data: T) -> Result<()> {
-        self.out(data)
-    }
-
     fn is_json(&self) -> bool {
         false
     }
@@ -50,14 +46,6 @@ impl Printer for StdoutPrinter {
             }
         } else {
             writeln!(self.stdout, "{data}")?;
-        }
-
-        Ok(())
-    }
-
-    fn log<T: fmt::Display + serde::Serialize>(&mut self, data: T) -> Result<()> {
-        if !self.json {
-            write!(&mut self.stdout, "{data}")?;
         }
 
         Ok(())

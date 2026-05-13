@@ -5,12 +5,12 @@ use secrecy::SecretString;
 use crate::prompt::{self, PromptResult};
 
 #[derive(Clone, Debug)]
-pub struct WizardImapConfig {
+pub struct WizardSmtpConfig {
     pub host: String,
     pub port: u16,
     pub encryption: Encryption,
     pub login: String,
-    pub auth: ImapAuth,
+    pub auth: SmtpAuth,
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -32,12 +32,12 @@ impl fmt::Display for Encryption {
 }
 
 #[derive(Clone, Debug)]
-pub enum ImapAuth {
-    Password(ImapSecret),
+pub enum SmtpAuth {
+    Password(SmtpSecret),
 }
 
 #[derive(Clone, Debug)]
-pub enum ImapSecret {
+pub enum SmtpSecret {
     Raw(SecretString),
     Command(String),
 }
@@ -53,21 +53,21 @@ pub fn run(
     account_name: impl AsRef<str>,
     local_part: impl AsRef<str>,
     domain: impl AsRef<str>,
-    defaults: Option<&WizardImapConfig>,
-) -> PromptResult<WizardImapConfig> {
+    defaults: Option<&WizardSmtpConfig>,
+) -> PromptResult<WizardSmtpConfig> {
     let account_name = account_name.as_ref();
     let local_part = local_part.as_ref();
     let domain = domain.as_ref();
 
     let default_host = defaults
         .map(|c| c.host.clone())
-        .unwrap_or_else(|| format!("imap.{domain}"));
+        .unwrap_or_else(|| format!("smtp.{domain}"));
 
-    let host = prompt::text("IMAP hostname:", Some(&default_host))?;
+    let host = prompt::text("SMTP hostname:", Some(&default_host))?;
 
     let default_encryption = defaults.map(|c| c.encryption).unwrap_or_default();
 
-    let encryption = prompt::item("IMAP encryption:", ENCRYPTIONS, Some(default_encryption))?;
+    let encryption = prompt::item("SMTP encryption:", ENCRYPTIONS, Some(default_encryption))?;
 
     let default_port = if encryption == default_encryption {
         defaults
@@ -77,29 +77,29 @@ pub fn run(
         default_port(encryption)
     };
 
-    let port = prompt::u16("IMAP port:", Some(default_port))?;
+    let port = prompt::u16("SMTP port:", Some(default_port))?;
 
     let default_login = defaults
         .map(|c| c.login.clone())
         .unwrap_or_else(|| format!("{local_part}@{domain}"));
 
-    let login = prompt::text("IMAP login:", Some(&default_login))?;
+    let login = prompt::text("SMTP login:", Some(&default_login))?;
 
     let auth = {
-        let strategy = prompt::item("IMAP authentication strategy:", SECRETS, None)?;
+        let strategy = prompt::item("SMTP authentication strategy:", SECRETS, None)?;
         let secret = match strategy {
             CMD => {
-                let default_cmd = default_secret_cmd(account_name, "imap");
-                ImapSecret::Command(prompt::text("Shell command:", Some(&default_cmd))?)
+                let default_cmd = default_secret_cmd(account_name, "smtp");
+                SmtpSecret::Command(prompt::text("Shell command:", Some(&default_cmd))?)
             }
-            RAW => ImapSecret::Raw(prompt::password("IMAP password:")?),
+            RAW => SmtpSecret::Raw(prompt::password("SMTP password:")?),
             _ => unreachable!(),
         };
 
-        ImapAuth::Password(secret)
+        SmtpAuth::Password(secret)
     };
 
-    Ok(WizardImapConfig {
+    Ok(WizardSmtpConfig {
         host,
         port,
         encryption,
@@ -125,7 +125,8 @@ fn default_secret_cmd(account_name: &str, protocol: &str) -> String {
 
 fn default_port(encryption: Encryption) -> u16 {
     match encryption {
-        Encryption::Tls => 993,
-        Encryption::StartTls | Encryption::None => 143,
+        Encryption::Tls => 465,
+        Encryption::StartTls => 587,
+        Encryption::None => 25,
     }
 }

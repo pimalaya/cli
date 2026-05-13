@@ -16,11 +16,17 @@ repository = "https://github.com/pimalaya/cli"
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
+[[example]]
+name = "imap-wizard"
+path = "examples/imap_wizard.rs"
+required-features = ["wizard", "imap"]
+
 [features]
-default = ["prompt", "wizard", "imap", "terminal", "build", "table"]
+default = ["prompt", "wizard", "imap", "smtp", "terminal", "build", "table"]
 prompt = ["dep:inquire", "dep:secrecy", "dep:thiserror"]
 imap = ["dep:secrecy"]
-wizard = ["prompt", "dep:io-discovery"]
+smtp = ["dep:secrecy"]
+wizard = ["prompt"]
 terminal = ["dep:anyhow", "dep:clap", "dep:clap_complete", "dep:clap_mangen", "dep:env_logger", "dep:serde", "dep:serde_json", "dep:shellexpand"]
 build = ["dep:git2", "dep:serde", "dep:toml"]
 table = ["dep:comfy-table"]
@@ -34,7 +40,6 @@ comfy-table = { version = "7", optional = true }
 env_logger = { version = "0.11", optional = true }
 git2 = { version = "0.20", default-features = false, optional = true }
 inquire = { version = "0.9", optional = true }
-io-discovery = { version = "0.0.1", default-features = false, features = ["autoconfig"], optional = true }
 log = "0.4"
 secrecy = { version = "0.10", features = ["serde"], optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
@@ -43,7 +48,3 @@ shellexpand = { version = "3.1", optional = true }
 thiserror = { version = "2", optional = true }
 toml = { version = "0.8", optional = true }
 
-[patch.crates-io]
-domain = { git = "https://github.com/soywod/domain", branch = "new-srv" }
-io-discovery.git = "https://github.com/pimalaya/io-discovery"
-io-http.git = "https://github.com/pimalaya/io-http"
