@@ -57,7 +57,7 @@ pub struct JsonFlag {
 
 /// The log level flag parser.
 #[derive(Debug, Default, Parser)]
-pub struct LogArgs {
+pub struct LogFlags {
     /// Filter log output by level.
     ///
     /// When omitted, the `RUST_LOG` environment variable is consulted

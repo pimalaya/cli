@@ -1,8 +1,9 @@
 use std::fs::OpenOptions;
 
+use anyhow::Result;
 use env_logger::{Builder, Target};
 
-use crate::clap::args::LogArgs;
+use crate::clap::args::LogFlags;
 
 pub struct Logger;
 
@@ -16,30 +17,27 @@ impl Logger {
     /// caller asked for a log file but we cannot create or open it,
     /// the binary should refuse to run rather than silently fall back
     /// to stderr and pollute interactive prompts.
-    pub fn init(log: &LogArgs) {
+    pub fn try_init(log: &LogFlags) -> Result<()> {
         let mut builder = Builder::new();
+
         match log.level {
             Some(level) => {
                 // Explicit `--log-level` overrides any `RUST_LOG`.
                 builder.filter_level(level.into());
             }
             None => {
-                // Defer to `RUST_LOG` (if unset, env_logger filters
-                // everything — same as `--log-level off`).
+                // Defer to `RUST_LOG` (if unset, env_logger filters everything
+                // — same as `--log-level off`).
                 builder.parse_default_env();
             }
         }
 
         if let Some(path) = &log.file {
-            builder.target(Target::Pipe(Box::new(
-                OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open(path)
-                    .expect("log file should be accessible"),
-            )));
+            let file = OpenOptions::new().create(true).append(true).open(path)?;
+            builder.target(Target::Pipe(Box::new(file)));
         }
 
-        builder.init();
+        builder.try_init()?;
+        Ok(())
     }
 }

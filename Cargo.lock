@@ -694,6 +694,7 @@ dependencies = [
  "clap_complete",
  "clap_mangen",
  "comfy-table",
+ "crossterm",
  "env_logger",
  "git2",
  "inquire",

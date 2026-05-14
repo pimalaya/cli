@@ -73,10 +73,10 @@ pub fn some_secret(prompt: impl AsRef<str>) -> PromptResult<Option<SecretString>
         .map_err(PromptError::Secret)
 }
 
-pub fn password(prompt: impl AsRef<str>) -> PromptResult<SecretString> {
+pub fn password(prompt: impl AsRef<str>, confirm: impl AsRef<str>) -> PromptResult<SecretString> {
     Password::new(prompt.as_ref())
         .with_display_mode(PasswordDisplayMode::Masked)
-        .with_custom_confirmation_message("Confirm password")
+        .with_custom_confirmation_message(confirm.as_ref())
         .prompt()
         .map(Into::into)
         .map_err(PromptError::Password)

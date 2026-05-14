@@ -92,7 +92,10 @@ pub fn run(
                 let default_cmd = default_secret_cmd(account_name, "smtp");
                 SmtpSecret::Command(prompt::text("Shell command:", Some(&default_cmd))?)
             }
-            RAW => SmtpSecret::Raw(prompt::password("SMTP password:")?),
+            RAW => SmtpSecret::Raw(prompt::password(
+                "SMTP password:",
+                "Confirm SMTP password:",
+            )?),
             _ => unreachable!(),
         };
 

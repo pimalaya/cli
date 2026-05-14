@@ -92,7 +92,10 @@ pub fn run(
                 let default_cmd = default_secret_cmd(account_name, "imap");
                 ImapSecret::Command(prompt::text("Shell command:", Some(&default_cmd))?)
             }
-            RAW => ImapSecret::Raw(prompt::password("IMAP password:")?),
+            RAW => ImapSecret::Raw(prompt::password(
+                "IMAP password:",
+                "Confirm IMAP password:",
+            )?),
             _ => unreachable!(),
         };
 

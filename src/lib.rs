@@ -13,6 +13,8 @@ pub mod log;
 pub mod printer;
 #[cfg(feature = "prompt")]
 pub mod prompt;
+#[cfg(feature = "spinner")]
+pub mod spinner;
 #[cfg(feature = "table")]
 pub mod table;
 #[cfg(feature = "prompt")]
