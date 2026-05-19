@@ -5,22 +5,6 @@ use log::LevelFilter;
 
 use super::parsers::path_parser;
 
-/// The config path flag parser.
-#[derive(Debug, Default, Parser)]
-pub struct ConfigPathsArg {
-    /// Override the default configuration file path.
-    ///
-    /// The given paths are shell-expanded then canonicalized (if
-    /// applicable). If the first path does not point to a valid file,
-    /// the wizard will propose to assist you in the creation of the
-    /// configuration file. Other paths are merged with the first one,
-    /// which allows you to separate your public config from your
-    /// private(s) one(s).
-    #[arg(long = "config", short = 'c', global = true)]
-    #[arg(name = "config_paths", value_name = "PATH", value_parser = path_parser)]
-    pub paths: Vec<PathBuf>,
-}
-
 /// The account name flag parser.
 #[derive(Debug, Default, Parser)]
 pub struct AccountFlag {
@@ -40,7 +24,7 @@ pub struct AccountArg {
     ///
     /// An account name corresponds to an entry in the table at the
     /// root level of your TOML configuration file.
-    #[arg(name = "account_name", value_name = "ACCOUNT")]
+    #[arg(name = "account_name", value_name = "NAME")]
     pub name: String,
 }
 
