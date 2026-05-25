@@ -12,13 +12,13 @@ use crate::printer::Printer;
 pub struct ErrorReport(Error);
 
 impl ErrorReport {
-    pub fn eval(printer: &mut impl Printer, result: Result<()>) {
-        if let Err(err) = result {
-            printer
-                .out(ErrorReport::from(err))
-                .expect("should write error report to stdout");
-
-            process::exit(1);
+    pub fn eval<T>(printer: &mut impl Printer, result: Result<T, Error>) -> T {
+        match result {
+            Ok(res) => res,
+            Err(err) => {
+                printer.out(ErrorReport::from(err)).unwrap();
+                process::exit(1);
+            }
         }
     }
 
