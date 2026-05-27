@@ -20,7 +20,7 @@ use std::{
     io::{stderr, IsTerminal, Write},
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, Mutex,
+        Arc, Mutex, OnceLock,
     },
     thread::{self, JoinHandle},
     time::Duration,
@@ -49,11 +49,19 @@ impl Spinner {
     /// When stderr is not a TTY no thread is spawned and ticks are
     /// suppressed; terminal completion lines (`success`/`failure`)
     /// are still printed so logs remain informative.
+    ///
+    /// The first TTY-bound call also installs a process-wide SIGINT /
+    /// SIGTERM / SIGHUP handler and a panic hook that restore the
+    /// cursor before letting the process die: Drop is skipped on
+    /// signal-induced termination and on panic = abort, so without
+    /// these hooks `cursor::Hide` from the render loop would leak
+    /// past process exit.
     pub fn start(message: impl Into<String>) -> Self {
         let message = Arc::new(Mutex::new(message.into()));
         let stop = Arc::new(AtomicBool::new(false));
 
         let handle = if stderr().is_terminal() {
+            install_terminal_guards();
             let message = message.clone();
             let stop = stop.clone();
             Some(thread::spawn(move || render_loop(message, stop)))
@@ -112,6 +120,40 @@ impl Drop for Spinner {
     fn drop(&mut self) {
         self.shutdown();
     }
+}
+
+static TERMINAL_GUARDS: OnceLock<()> = OnceLock::new();
+
+fn install_terminal_guards() {
+    TERMINAL_GUARDS.get_or_init(|| {
+        // SIGINT/SIGTERM/SIGHUP: terminate the process bypassing Drop,
+        // so the render loop never reaches its `cursor::Show` tail.
+        // ctrlc with the `termination` feature catches all three on
+        // Unix and Ctrl-C/Ctrl-Break console events on Windows. The
+        // exit code follows the 128 + signal convention so shells see
+        // the canonical "killed by SIGINT" status (130).
+        let _ = ctrlc::set_handler(|| {
+            restore_terminal();
+            std::process::exit(130);
+        });
+
+        // panic = abort skips Drop too. Chain a hook in front of the
+        // default so the panic message still reaches stderr after the
+        // cursor is restored.
+        let default_hook = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |info| {
+            restore_terminal();
+            default_hook(info);
+        }));
+    });
+}
+
+fn restore_terminal() {
+    let mut out = stderr();
+    out.queue(cursor::MoveToColumn(0)).ok();
+    out.queue(Clear(ClearType::CurrentLine)).ok();
+    out.queue(cursor::Show).ok();
+    out.flush().ok();
 }
 
 fn render_loop(message: Arc<Mutex<String>>, stop: Arc<AtomicBool>) {

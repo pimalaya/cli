@@ -36,7 +36,7 @@ wizard = ["prompt"]
 terminal = ["dep:anyhow", "dep:clap", "dep:clap_complete", "dep:clap_mangen", "dep:env_logger", "dep:serde", "dep:serde_json", "dep:shellexpand"]
 build = ["dep:git2", "dep:serde", "dep:toml"]
 table = ["dep:comfy-table"]
-spinner = ["dep:crossterm"]
+spinner = ["dep:crossterm", "dep:ctrlc"]
 
 [dependencies]
 anyhow = { version = "1", optional = true }
@@ -45,6 +45,7 @@ clap_complete = { version = "4.4", optional = true }
 clap_mangen = { version = "0.3", optional = true }
 comfy-table = { version = "7", optional = true }
 crossterm = { version = "0.29", optional = true }
+ctrlc = { version = "3", features = ["termination"], optional = true }
 env_logger = { version = "0.11", default-features = false, features = ["auto-color"], optional = true }
 git2 = { version = "0.21", default-features = false, optional = true }
 inquire = { version = "0.9", optional = true }
