@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added wizard::caldav and wizard::carddav prompt helpers.
+
 - Init foundations
 
 [unreleased]: https://github.com/pimalaya/toolbox/compare/root..HEAD

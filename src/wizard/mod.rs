@@ -1,3 +1,7 @@
+#[cfg(feature = "caldav")]
+pub mod caldav;
+#[cfg(feature = "carddav")]
+pub mod carddav;
 #[cfg(feature = "imap")]
 pub mod imap;
 #[cfg(feature = "jmap")]
