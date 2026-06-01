@@ -29,7 +29,7 @@ pub struct ConfigFlags {
     /// separate your public config from your private(s) one(s). Multiple paths
     /// can also be provided by delimiting them with `:` (like `$PATH` in a
     /// POSIX shell).
-    #[arg(short, long = "config", global = true)]
+    #[arg(short = 'c', long = "config", global = true)]
     #[arg(name = "config_paths", value_name = "PATH")]
     #[arg(value_parser = path_parser, value_delimiter = ':')]
     pub paths: Vec<PathBuf>,
