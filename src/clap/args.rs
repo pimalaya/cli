@@ -17,6 +17,24 @@ pub struct AccountFlag {
     pub name: Option<String>,
 }
 
+/// The config path flags parser.
+#[derive(Debug, Default, Parser)]
+pub struct ConfigFlags {
+    /// Override the default configuration file path.
+    ///
+    /// The given paths are shell-expanded then canonicalized (if
+    /// applicable). If the first path does not point to a valid file, the
+    /// wizard will propose to assist you in the creation of the configuration
+    /// file. Other paths are merged with the first one, which allows you to
+    /// separate your public config from your private(s) one(s). Multiple paths
+    /// can also be provided by delimiting them with `:` (like `$PATH` in a
+    /// POSIX shell).
+    #[arg(short, long = "config", global = true)]
+    #[arg(name = "config_paths", value_name = "PATH")]
+    #[arg(value_parser = path_parser, value_delimiter = ':')]
+    pub paths: Vec<PathBuf>,
+}
+
 /// The account name flag parser.
 #[derive(Debug, Default, Parser)]
 pub struct AccountArg {
