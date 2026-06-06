@@ -3,8 +3,8 @@ name = "pimalaya-cli"
 description = "Collection of CLI tools for Pimalaya"
 version = "0.0.1"
 authors = ["soywod <clement.douin@posteo.net>"]
-rust-version = "1.56"
-edition = "2021"
+edition = "2024"
+rust-version = "1.87"
 license = "MIT"
 categories = []
 keywords = ["pimalaya", "cli"]
@@ -15,16 +15,6 @@ repository = "https://github.com/pimalaya/cli"
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
-
-[[example]]
-name = "imap-wizard"
-path = "examples/imap_wizard.rs"
-required-features = ["wizard", "imap"]
-
-[[example]]
-name = "spinner"
-path = "examples/spinner.rs"
-required-features = ["spinner"]
 
 [features]
 default = []
@@ -39,6 +29,16 @@ terminal = ["dep:anyhow", "dep:clap", "dep:clap_complete", "dep:clap_mangen", "d
 build = ["dep:git2", "dep:serde", "dep:toml"]
 table = ["dep:comfy-table"]
 spinner = ["dep:crossterm", "dep:ctrlc"]
+
+[[example]]
+name = "imap-wizard"
+path = "examples/imap_wizard.rs"
+required-features = ["wizard", "imap"]
+
+[[example]]
+name = "spinner"
+path = "examples/spinner.rs"
+required-features = ["spinner"]
 
 [dependencies]
 anyhow = { version = "1", optional = true }
