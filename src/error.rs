@@ -4,8 +4,8 @@ use std::{
 };
 
 use anyhow::{Error, Result};
-use log::{log_enabled, Level};
-use serde::{ser::SerializeStruct, Serialize, Serializer};
+use log::{Level, log_enabled};
+use serde::{Serialize, Serializer, ser::SerializeStruct};
 
 use crate::printer::Printer;
 
@@ -82,7 +82,7 @@ impl fmt::Display for ErrorReport {
             write!(f, " - {suggestion}")?;
         }
 
-        Ok(())
+        writeln!(f)
     }
 }
 

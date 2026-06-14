@@ -1,6 +1,6 @@
 use std::{
     fmt,
-    io::{stdout, IsTerminal, Stdout, Write},
+    io::{IsTerminal, Stdout, Write, stdout},
 };
 
 use anyhow::{Context, Result};
@@ -45,7 +45,7 @@ impl Printer for StdoutPrinter {
                     .context("Print JSON to stdout error")?;
             }
         } else {
-            writeln!(self.stdout, "{data}")?;
+            write!(self.stdout, "{data}")?;
         }
 
         Ok(())
@@ -72,6 +72,6 @@ impl Message {
 
 impl fmt::Display for Message {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", &self.message)
+        writeln!(f, "{}", &self.message)
     }
 }
