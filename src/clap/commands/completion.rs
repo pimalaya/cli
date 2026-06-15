@@ -1,7 +1,7 @@
 use std::{fmt, fs, path::PathBuf};
 
 use anyhow::Result;
-use clap::{value_parser, Command, Parser};
+use clap::{Command, Parser, value_parser};
 use clap_complete::Shell;
 use log::debug;
 use serde::{Serialize, Serializer};

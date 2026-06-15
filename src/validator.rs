@@ -1,6 +1,6 @@
 use inquire::{
-    validator::{StringValidator, Validation},
     CustomUserError,
+    validator::{StringValidator, Validation},
 };
 
 #[derive(Clone, Debug, Default)]

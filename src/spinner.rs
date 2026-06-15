@@ -17,20 +17,19 @@
 //! ```
 
 use std::{
-    io::{stderr, IsTerminal, Write},
+    io::{IsTerminal, Write, stderr},
     sync::{
-        atomic::{AtomicBool, Ordering},
         Arc, Mutex, OnceLock,
+        atomic::{AtomicBool, Ordering},
     },
     thread::{self, JoinHandle},
     time::Duration,
 };
 
 use crossterm::{
-    cursor,
+    QueueableCommand, cursor,
     style::{Color, Print, PrintStyledContent, Stylize},
     terminal::{Clear, ClearType},
-    QueueableCommand,
 };
 
 const FRAMES: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
