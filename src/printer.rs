@@ -40,6 +40,7 @@ impl Printer for StdoutPrinter {
             if self.stdout.is_terminal() {
                 serde_json::to_writer_pretty(&mut self.stdout, &data)
                     .context("Print pretty JSON to stdout error")?;
+                writeln!(self.stdout, "")?;
             } else {
                 serde_json::to_writer(&mut self.stdout, &data)
                     .context("Print JSON to stdout error")?;
