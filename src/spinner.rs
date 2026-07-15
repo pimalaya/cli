@@ -36,6 +36,7 @@ const FRAMES: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧"
 
 const FRAME_INTERVAL: Duration = Duration::from_millis(80);
 
+/// A single-line terminal spinner with a live message.
 pub struct Spinner {
     message: Arc<Mutex<String>>,
     stop: Arc<AtomicBool>,

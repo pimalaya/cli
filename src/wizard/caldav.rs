@@ -1,24 +1,34 @@
+//! Interactive CalDAV account setup wizard.
+
 use core::fmt;
 
 use secrecy::SecretString;
 
 use crate::prompt::{self, PromptResult};
 
+/// CalDAV account settings collected by the wizard.
 #[derive(Clone, Debug)]
 pub struct WizardCaldavConfig {
+    /// The CalDAV server hostname.
     pub host: String,
+    /// The CalDAV server port.
     pub port: u16,
+    /// The connection encryption scheme.
     pub encryption: Encryption,
     /// Optional path override on the discovered server (used when the
     /// admin published the calendar home-set at a non-default URL).
     pub home_url: Option<String>,
+    /// The authentication method and its secret.
     pub auth: CaldavAuth,
 }
 
+/// Connection encryption scheme offered by the wizard.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum Encryption {
+    /// Implicit TLS negotiated on connection (the default).
     #[default]
     Tls,
+    /// No encryption (insecure).
     None,
 }
 
@@ -31,20 +41,29 @@ impl fmt::Display for Encryption {
     }
 }
 
+/// CalDAV authentication method.
 #[derive(Clone, Debug)]
 pub enum CaldavAuth {
+    /// HTTP Basic authentication with a username and a password secret.
     Basic {
+        /// The username sent during authentication.
         username: String,
+        /// The password secret.
         secret: CaldavSecret,
     },
+    /// HTTP Bearer authentication with a token secret.
     Bearer {
+        /// The token secret.
         secret: CaldavSecret,
     },
 }
 
+/// Source of a CalDAV secret (password or token).
 #[derive(Clone, Debug)]
 pub enum CaldavSecret {
+    /// The secret stored in plaintext in the configuration.
     Raw(SecretString),
+    /// A shell command whose output is the secret.
     Command(String),
 }
 
@@ -58,6 +77,8 @@ const BASIC: &str = "HTTP Basic (username + password)";
 const BEARER: &str = "HTTP Bearer (token)";
 const AUTHS: [&str; 2] = [BASIC, BEARER];
 
+/// Runs the interactive CalDAV account wizard, returning the collected
+/// settings.
 pub fn run(
     account_name: impl AsRef<str>,
     local_part: impl AsRef<str>,

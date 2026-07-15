@@ -1,3 +1,5 @@
+//! Interactive CardDAV account setup wizard.
+
 use secrecy::SecretString;
 
 use crate::prompt::{self, PromptResult};
@@ -17,6 +19,7 @@ pub struct WizardCarddavConfig {
     pub project_name: String,
     /// Account email, used as the username default when set.
     pub email: Option<String>,
+    /// The authentication method and its secret.
     pub auth: CarddavAuth,
     /// When set, drop the Basic option from the authentication-strategy
     /// prompt (e.g. Google, which only accepts OAuth 2.0 tokens).
@@ -26,11 +29,16 @@ pub struct WizardCarddavConfig {
 /// CardDAV authentication mechanism collected by the wizard.
 #[derive(Clone, Debug)]
 pub enum CarddavAuth {
+    /// HTTP Basic authentication with a username and a password secret.
     Basic {
+        /// The username sent during authentication.
         username: String,
+        /// The password secret.
         secret: CarddavSecret,
     },
+    /// HTTP Bearer authentication with a token secret.
     Bearer {
+        /// The token secret.
         secret: CarddavSecret,
     },
 }
@@ -48,7 +56,9 @@ impl Default for CarddavAuth {
 /// command line.
 #[derive(Clone, Debug)]
 pub enum CarddavSecret {
+    /// The secret stored in plaintext in the configuration.
     Raw(SecretString),
+    /// A shell command whose output is the secret.
     Command(String),
 }
 
@@ -66,8 +76,10 @@ const BASIC: &str = "Basic (username + password)";
 const BEARER: &str = "Bearer (token)";
 const AUTHS: [&str; 2] = [BASIC, BEARER];
 
+/// Runs the interactive CardDAV account wizard, returning the collected
+/// settings.
 pub fn run(defaults: &WizardCarddavConfig) -> PromptResult<WizardCarddavConfig> {
-    // Bearer-only providers (e.g. Google) still get the strategy prompt,
+    // NOTE: Bearer-only providers (e.g. Google) still get the strategy prompt,
     // just without the Basic option.
     let strategies: &[&str] = if defaults.bearer_only {
         &[BEARER]

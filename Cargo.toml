@@ -1,12 +1,12 @@
 [package]
 name = "pimalaya-cli"
-description = "Collection of CLI tools for Pimalaya"
+description = "CLI utils for Pimalaya"
 version = "0.0.2"
-authors = ["soywod <clement.douin@posteo.net>"]
+authors = ["soywod <pimalaya.org@posteo.net>"]
 edition = "2024"
 rust-version = "1.87"
-license = "MIT"
-categories = []
+license = "MIT OR Apache-2.0"
+categories = ["command-line-utilities"]
 keywords = ["pimalaya", "cli"]
 homepage = "https://pimalaya.org"
 documentation = "https://docs.rs/pimalaya-cli/latest/pimalaya_cli"
@@ -19,11 +19,11 @@ rustdoc-args = ["--cfg", "docsrs"]
 [features]
 default = []
 prompt = ["dep:inquire", "dep:secrecy", "dep:thiserror"]
-imap = ["dep:secrecy"]
-smtp = ["dep:secrecy"]
-jmap = ["dep:secrecy"]
-caldav = ["dep:secrecy"]
-carddav = ["dep:secrecy"]
+imap = ["wizard", "dep:secrecy"]
+smtp = ["wizard", "dep:secrecy"]
+jmap = ["wizard", "dep:secrecy"]
+caldav = ["wizard", "dep:secrecy"]
+carddav = ["wizard", "dep:secrecy"]
 wizard = ["prompt"]
 terminal = ["dep:anyhow", "dep:clap", "dep:clap_complete", "dep:clap_mangen", "dep:env_logger", "dep:serde", "dep:serde_json", "dep:shellexpand"]
 build = ["dep:git2", "dep:serde", "dep:toml"]
@@ -57,4 +57,4 @@ serde = { version = "1", features = ["derive"], optional = true }
 serde_json = { version = "1", optional = true }
 shellexpand = { version = "3.1", optional = true }
 thiserror = { version = "2", optional = true }
-toml = { version = "0.8", optional = true }
+toml = { version = "1.1", optional = true }

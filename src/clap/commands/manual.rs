@@ -21,6 +21,7 @@ pub struct ManualCommand {
 }
 
 impl ManualCommand {
+    /// Generates the man pages and reports how many landed where.
     pub fn execute(self, printer: &mut impl Printer, command: Command) -> Result<()> {
         let dir = &self.dir;
         let cmd_name = command.get_name().to_string();
@@ -30,7 +31,7 @@ impl ManualCommand {
         let mut buffer = Vec::new();
         Man::new(command).render(&mut buffer)?;
 
-        fs::create_dir_all(&dir)?;
+        fs::create_dir_all(dir)?;
         info!("generate man page for command {cmd_name}");
         fs::write(dir.join(format!("{}.1", cmd_name)), buffer)?;
 

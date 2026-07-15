@@ -1,3 +1,9 @@
+//! Helpers for binary build scripts.
+//!
+//! Small functions a build.rs calls to expose enabled features, target
+//! platform and git metadata as environment variables baked into the
+//! binary.
+
 use std::{
     collections::HashMap,
     env::{self, VarError},
@@ -118,5 +124,5 @@ fn try_forward_env(key: &str) -> Result<String, VarError> {
 ///
 /// For a less strict version, see [`try_forward_env`].
 fn forward_env(key: &str) {
-    try_forward_env(key).expect(&format!("should get env {key}"));
+    try_forward_env(key).unwrap_or_else(|_| panic!("should get env {key}"));
 }

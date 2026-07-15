@@ -1,9 +1,11 @@
+//! Shared clap argument and flag parsers.
+
 use std::path::PathBuf;
 
 use clap::{Parser, ValueEnum};
 use log::LevelFilter;
 
-use super::parsers::path_parser;
+use crate::clap::parsers::path_parser;
 
 /// The account name flag parser.
 #[derive(Debug, Default, Parser)]
@@ -83,12 +85,18 @@ pub struct LogFlags {
 /// Log level matching [`log::LevelFilter`].
 #[derive(Debug, Default, Clone, Copy, ValueEnum)]
 pub enum LogLevel {
+    /// No logging.
     #[default]
     Off,
+    /// Errors only.
     Error,
+    /// Warnings and errors.
     Warn,
+    /// Informational messages and above.
     Info,
+    /// Debug messages and above.
     Debug,
+    /// Trace messages and above (most verbose).
     Trace,
 }
 
@@ -105,6 +113,8 @@ impl From<LogLevel> for LevelFilter {
     }
 }
 
+/// Builds the long version string (version, enabled features, build
+/// target and git revision) for a binary's `--version` output.
 #[macro_export]
 macro_rules! long_version {
     () => {

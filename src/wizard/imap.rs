@@ -1,23 +1,35 @@
+//! Interactive IMAP account setup wizard.
+
 use core::fmt;
 
 use secrecy::SecretString;
 
 use crate::prompt::{self, PromptResult};
 
+/// IMAP account settings collected by the wizard.
 #[derive(Clone, Debug)]
 pub struct WizardImapConfig {
+    /// The IMAP server hostname.
     pub host: String,
+    /// The IMAP server port.
     pub port: u16,
+    /// The connection encryption scheme.
     pub encryption: Encryption,
+    /// The login (username) sent during authentication.
     pub login: String,
+    /// The authentication method and its secret.
     pub auth: ImapAuth,
 }
 
+/// Connection encryption scheme offered by the wizard.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum Encryption {
+    /// Implicit TLS negotiated on connection (the default).
     #[default]
     Tls,
+    /// Opportunistic upgrade to TLS through STARTTLS.
     StartTls,
+    /// No encryption (insecure).
     None,
 }
 
@@ -31,14 +43,19 @@ impl fmt::Display for Encryption {
     }
 }
 
+/// IMAP authentication method.
 #[derive(Clone, Debug)]
 pub enum ImapAuth {
+    /// Password authentication carrying the password secret.
     Password(ImapSecret),
 }
 
+/// Source of an IMAP password.
 #[derive(Clone, Debug)]
 pub enum ImapSecret {
+    /// The password stored in plaintext in the configuration.
     Raw(SecretString),
+    /// A shell command whose output is the password.
     Command(String),
 }
 
@@ -49,6 +66,8 @@ const RAW: &str = "Save password in the configuration file (plaintext, NOT recom
 
 const SECRETS: [&str; 2] = [CMD, RAW];
 
+/// Runs the interactive IMAP account wizard, returning the collected
+/// settings.
 pub fn run(
     account_name: impl AsRef<str>,
     local_part: impl AsRef<str>,

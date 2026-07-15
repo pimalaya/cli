@@ -26,6 +26,7 @@ pub struct CompletionCommand {
 }
 
 impl CompletionCommand {
+    /// Generates the completion scripts and reports where they landed.
     pub fn execute(self, printer: &mut impl Printer, mut command: Command) -> Result<()> {
         let dir = self.dir.canonicalize().unwrap_or(self.dir);
         fs::create_dir_all(&dir)?;
@@ -34,7 +35,7 @@ impl CompletionCommand {
         let mut scripts = Vec::with_capacity(5);
 
         for shell in self.shells {
-            let path = clap_complete::generate_to(shell.clone(), &mut command, &cmd_name, &dir)?;
+            let path = clap_complete::generate_to(shell, &mut command, &cmd_name, &dir)?;
             let path = path.canonicalize().unwrap_or(path);
             debug!("generated {shell} completion script at {}", path.display());
             scripts.push(Script { shell, path })

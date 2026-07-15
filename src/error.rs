@@ -1,3 +1,5 @@
+//! Command failure reporting to stdout.
+
 use std::{
     backtrace::{Backtrace, BacktraceStatus},
     fmt, process,
@@ -9,9 +11,13 @@ use serde::{Serialize, Serializer, ser::SerializeStruct};
 
 use crate::printer::Printer;
 
+/// Wraps an [`anyhow::Error`] to render it, with its source chain and
+/// backtrace, as text or JSON.
 pub struct ErrorReport(Error);
 
 impl ErrorReport {
+    /// Unwraps a result, or prints the error to the printer and exits
+    /// with status 1.
     pub fn eval<T>(printer: &mut impl Printer, result: Result<T, Error>) -> T {
         match result {
             Ok(res) => res,

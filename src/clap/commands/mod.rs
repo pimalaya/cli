@@ -1,3 +1,5 @@
+//! Ready-made clap commands shared by every binary.
+
 mod completion;
 mod manual;
 

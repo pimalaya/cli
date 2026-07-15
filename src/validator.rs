@@ -1,8 +1,11 @@
+//! Reusable inquire input validators.
+
 use inquire::{
     CustomUserError,
     validator::{StringValidator, Validation},
 };
 
+/// Validates that the input parses as a u16.
 #[derive(Clone, Debug, Default)]
 pub struct U16Validator;
 
@@ -15,6 +18,7 @@ impl StringValidator for U16Validator {
     }
 }
 
+/// Validates that the input parses as a usize.
 #[derive(Clone, Debug, Default)]
 pub struct UsizeValidator;
 
