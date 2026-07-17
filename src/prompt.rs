@@ -6,7 +6,7 @@
 
 use core::fmt;
 
-use inquire::{Confirm, InquireError, Password, PasswordDisplayMode, Select, Text};
+use inquire::{Confirm, InquireError, MultiSelect, Password, PasswordDisplayMode, Select, Text};
 use secrecy::SecretString;
 use thiserror::Error;
 
@@ -36,6 +36,9 @@ pub enum PromptError {
     /// Prompting a choice from a list failed.
     #[error("cannot prompt item from list")]
     Item(#[source] InquireError),
+    /// Prompting several choices from a list failed.
+    #[error("cannot prompt items from list")]
+    Items(#[source] InquireError),
 }
 
 /// Result of a prompt helper.
@@ -157,4 +160,20 @@ pub fn item<T: fmt::Display + Eq>(
     }
 
     prompt.prompt().map_err(PromptError::Item)
+}
+
+/// Prompts for several items chosen from a list (a multi-select),
+/// with the given item indices selected by default.
+pub fn items<T: fmt::Display + Eq>(
+    prompt: impl AsRef<str>,
+    items: impl IntoIterator<Item = T>,
+    default: impl IntoIterator<Item = usize>,
+) -> PromptResult<Vec<T>> {
+    let items: Vec<_> = items.into_iter().collect();
+    let default: Vec<usize> = default.into_iter().collect();
+
+    MultiSelect::new(prompt.as_ref(), items)
+        .with_default(&default)
+        .prompt()
+        .map_err(PromptError::Items)
 }

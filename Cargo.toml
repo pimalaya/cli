@@ -17,7 +17,7 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = []
+default = ["prompt", "imap", "smtp", "jmap", "caldav", "carddav", "wizard", "terminal", "build", "table", "spinner"]
 prompt = ["dep:inquire", "dep:secrecy", "dep:thiserror"]
 imap = ["wizard", "dep:secrecy"]
 smtp = ["wizard", "dep:secrecy"]
