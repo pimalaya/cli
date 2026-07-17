@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `prompt::items`, a multi-select wrapping `inquire::MultiSelect`: it returns the chosen items and takes the item indices selected by default.
 
+### Changed
+
+- Removed filtering from `prompt::item` and `prompt::items`.
+
 ## [0.1.0] - 2026-07-15
 
 ### Added

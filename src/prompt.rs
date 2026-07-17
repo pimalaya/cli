@@ -153,7 +153,7 @@ pub fn item<T: fmt::Display + Eq>(
         None
     };
 
-    let mut prompt = Select::new(prompt.as_ref(), items);
+    let mut prompt = Select::new(prompt.as_ref(), items).without_filtering();
 
     if let Some(default) = default.as_ref() {
         prompt = prompt.with_starting_cursor(*default);
@@ -173,6 +173,7 @@ pub fn items<T: fmt::Display + Eq>(
     let default: Vec<usize> = default.into_iter().collect();
 
     MultiSelect::new(prompt.as_ref(), items)
+        .without_filtering()
         .with_default(&default)
         .prompt()
         .map_err(PromptError::Items)
