@@ -4,7 +4,10 @@ use core::fmt;
 
 use secrecy::SecretString;
 
-use crate::prompt::{self, PromptResult};
+use crate::{
+    prompt::{self, PromptResult},
+    wizard::keyring::{self, SecretChoice},
+};
 
 /// IMAP account settings collected by the wizard.
 #[derive(Clone, Debug)]
@@ -61,11 +64,6 @@ pub enum ImapSecret {
 
 const ENCRYPTIONS: [Encryption; 3] = [Encryption::Tls, Encryption::StartTls, Encryption::None];
 
-const CMD: &str = "Use a shell command to retrieve my password (recommended)";
-const RAW: &str = "Save password in the configuration file (plaintext, NOT recommended)";
-
-const SECRETS: [&str; 2] = [CMD, RAW];
-
 /// Runs the interactive IMAP account wizard, returning the collected
 /// settings.
 pub fn run(
@@ -105,20 +103,12 @@ pub fn run(
     let login = prompt::text("IMAP login:", Some(&default_login))?;
 
     let auth = {
-        let strategy = prompt::item("IMAP authentication strategy:", SECRETS, None)?;
-        let secret = match strategy {
-            CMD => {
-                let default_cmd = default_secret_cmd(account_name, "imap");
-                ImapSecret::Command(prompt::text("Shell command:", Some(&default_cmd))?)
-            }
-            RAW => ImapSecret::Raw(prompt::password(
-                "IMAP password:",
-                "Confirm IMAP password:",
-            )?),
-            _ => unreachable!(),
-        };
-
-        ImapAuth::Password(secret)
+        let key = format!("{account_name}-imap");
+        let secret = keyring::prompt_secret("IMAP password", &key, &[])?;
+        ImapAuth::Password(match secret {
+            SecretChoice::Command(command) => ImapSecret::Command(command),
+            SecretChoice::Raw(secret) => ImapSecret::Raw(secret),
+        })
     };
 
     Ok(WizardImapConfig {
@@ -128,21 +118,6 @@ pub fn run(
         login,
         auth,
     })
-}
-
-fn default_secret_cmd(account_name: &str, protocol: &str) -> String {
-    if cfg!(target_os = "macos") {
-        format!(
-            "security find-generic-password \
-	     -a '{account_name}' \
-	     -s 'himalaya-{account_name}-{protocol}' \
-	     -w"
-        )
-    } else if cfg!(target_os = "linux") {
-        format!("secret-tool lookup account {account_name} service himalaya-{protocol}")
-    } else {
-        String::new()
-    }
 }
 
 fn default_port(encryption: Encryption) -> u16 {

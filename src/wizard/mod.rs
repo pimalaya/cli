@@ -11,5 +11,7 @@ pub mod carddav;
 pub mod imap;
 #[cfg(feature = "jmap")]
 pub mod jmap;
+#[cfg(feature = "wizard")]
+pub mod keyring;
 #[cfg(feature = "smtp")]
 pub mod smtp;
