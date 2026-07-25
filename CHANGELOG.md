@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-07-25
+
+### Added
+
+- Added `wizard::keyring`, an OS-aware credential-provider picker shared by the account wizards.
+
+  A password is read from a well-known keyring CLI (`secret-tool`, `kwallet-query`, `security` or `pass`), an OAuth 2.0 access token from a well-known token broker (`ortie`, `pizauth` or `oama`), a custom shell command, or stored raw in the configuration. Known providers and brokers yield an argv command serialized as a TOML array; only custom commands fall back to a shell string.
+
+### Changed
+
+- Reworked the `imap` and `smtp` wizards to read credentials through the new `wizard::keyring` picker.
+
 ## [0.1.1] - 2026-07-17
 
 ### Added
@@ -35,7 +47,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial published toolkit: clap arguments and commands, printer, logger, prompt, spinner, table, account wizards, error reporting, validators and build helpers.
 
-[unreleased]: https://github.com/pimalaya/cli/compare/v0.1.1..HEAD
+[unreleased]: https://github.com/pimalaya/cli/compare/v0.1.2..HEAD
+[0.1.2]: https://github.com/pimalaya/cli/compare/v0.1.1..v0.1.2
 [0.1.1]: https://github.com/pimalaya/cli/compare/v0.1.0..v0.1.1
 [0.1.0]: https://github.com/pimalaya/cli/compare/v0.0.2..v0.1.0
 [0.0.2]: https://github.com/pimalaya/cli/compare/root..v0.0.2
