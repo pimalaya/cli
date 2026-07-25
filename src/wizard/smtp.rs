@@ -58,8 +58,12 @@ pub enum SmtpAuth {
 pub enum SmtpSecret {
     /// The password stored in plaintext in the configuration.
     Raw(SecretString),
-    /// A shell command whose output is the password.
-    Command(String),
+    /// An argv command (program + arguments, no shell) whose output is
+    /// the password. The preferred form.
+    Command(Vec<String>),
+    /// A shell command line whose output is the password — the fallback,
+    /// run through the platform shell.
+    Shell(String),
 }
 
 const ENCRYPTIONS: [Encryption; 3] = [Encryption::Tls, Encryption::StartTls, Encryption::None];
@@ -104,9 +108,10 @@ pub fn run(
 
     let auth = {
         let key = format!("{account_name}-smtp");
-        let secret = keyring::prompt_secret("SMTP password", &key, &[])?;
+        let secret = keyring::prompt_secret("SMTP password", &key)?;
         SmtpAuth::Password(match secret {
-            SecretChoice::Command(command) => SmtpSecret::Command(command),
+            SecretChoice::Command(argv) => SmtpSecret::Command(argv),
+            SecretChoice::Shell(line) => SmtpSecret::Shell(line),
             SecretChoice::Raw(secret) => SmtpSecret::Raw(secret),
         })
     };
