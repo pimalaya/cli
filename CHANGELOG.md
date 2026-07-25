@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-07-25
+
+### Added
+
+- Added `clap::commands::JsonSchemaCommand`, a ready-made command generating one JSON Schema file per command output to a directory.
+
+  It mirrors `ManualCommand`: the binary passes a map of command name to that command's output schema (as a `serde_json::Value`), and the command serialises each entry to `<name>.json`, reporting how many landed where. The toolkit stays schema-library-agnostic by taking pre-built `serde_json::Value` schemas rather than depending on schemars.
+
 ## [0.1.2] - 2026-07-25
 
 ### Added
@@ -47,7 +55,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial published toolkit: clap arguments and commands, printer, logger, prompt, spinner, table, account wizards, error reporting, validators and build helpers.
 
-[unreleased]: https://github.com/pimalaya/cli/compare/v0.1.2..HEAD
+[unreleased]: https://github.com/pimalaya/cli/compare/v0.1.3..HEAD
+[0.1.3]: https://github.com/pimalaya/cli/compare/v0.1.2..v0.1.3
 [0.1.2]: https://github.com/pimalaya/cli/compare/v0.1.1..v0.1.2
 [0.1.1]: https://github.com/pimalaya/cli/compare/v0.1.0..v0.1.1
 [0.1.0]: https://github.com/pimalaya/cli/compare/v0.0.2..v0.1.0
