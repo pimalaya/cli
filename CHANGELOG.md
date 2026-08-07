@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING** Bumped `comfy-table` from v7 to v8, which `table` re-exports wholesale.
+
+  v8 removes the positional preset string: `Table::load_preset(&str)` becomes `Table::load_style(TableStyle)`, the `presets::*` constants change type from `&str` to `TableStyle`, and `Table::{set_style, style, remove_style, current_style_as_preset, apply_modifier}`, the `modifiers` module and the `TableComponent` enum are gone. Rounded corners and solid inner borders are now `TableStyle::{with_rounded_corners, with_solid_inner_borders}`. The default truncation indicator changed from `...` to `…`.
+
 ## [0.1.3] - 2026-07-25
 
 ### Added
