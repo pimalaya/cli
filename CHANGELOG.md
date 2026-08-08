@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Made `wizard::keyring` reachable from every wizard, not just the mail ones.
+
+  Its module declaration is gated on `wizard`, but each item inside it carried a second `any(imap, smtp, jmap)` gate, so a consumer enabling only `caldav` or `carddav` compiled the module and found it empty. The picker is protocol-agnostic, so the inner gates are gone and the module declaration is the only gate, as elsewhere in the crate.
+
 ## [0.2.0] - 2026-08-07
 
 ### Changed

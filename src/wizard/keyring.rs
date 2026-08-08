@@ -14,13 +14,10 @@
 //! records the read command, leaving the value for the user to store
 //! under the chosen entry beforehand.
 
-#[cfg(any(feature = "imap", feature = "smtp", feature = "jmap"))]
 use core::fmt;
 
-#[cfg(any(feature = "imap", feature = "smtp", feature = "jmap"))]
 use secrecy::SecretString;
 
-#[cfg(any(feature = "imap", feature = "smtp", feature = "jmap"))]
 use crate::prompt::{self, PromptResult};
 
 /// A well-known credential-provider CLI a password can be read from.
@@ -205,7 +202,6 @@ fn path(service: Option<&str>, key: &str) -> String {
 /// (serialized as a TOML array); a user-typed command is a
 /// [`Shell`](Self::Shell) line (serialized as a string), the fallback
 /// form run through the platform shell.
-#[cfg(any(feature = "imap", feature = "smtp", feature = "jmap"))]
 pub enum SecretChoice {
     /// An argv command (program + arguments, no shell) whose stdout is
     /// the secret. The preferred form.
@@ -219,7 +215,6 @@ pub enum SecretChoice {
 
 /// One entry in the secret pick list: a keyring provider, an OAuth
 /// broker, a custom command, or a raw value.
-#[cfg(any(feature = "imap", feature = "smtp", feature = "jmap"))]
 enum Choice {
     Keyring(KeyringProvider),
     Broker(TokenBroker),
@@ -227,7 +222,6 @@ enum Choice {
     Raw,
 }
 
-#[cfg(any(feature = "imap", feature = "smtp", feature = "jmap"))]
 impl PartialEq for Choice {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -239,10 +233,8 @@ impl PartialEq for Choice {
     }
 }
 
-#[cfg(any(feature = "imap", feature = "smtp", feature = "jmap"))]
 impl Eq for Choice {}
 
-#[cfg(any(feature = "imap", feature = "smtp", feature = "jmap"))]
 impl fmt::Display for Choice {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -255,9 +247,10 @@ impl fmt::Display for Choice {
 }
 
 /// Prompts for a password: a pick list of the OS keyring providers, then
-/// a custom command, then a raw value. See [`prompt_choice`] for how the
-/// entry is resolved.
-#[cfg(any(feature = "imap", feature = "smtp", feature = "jmap"))]
+/// a custom command, then a raw value.
+///
+/// `key_default` seeds the entry prompt, and the chosen entry is used
+/// verbatim: a pre-existing secret is read exactly as named.
 pub fn prompt_secret(label: &str, key_default: &str) -> PromptResult<SecretChoice> {
     let mut choices: Vec<Choice> = KeyringProvider::available()
         .into_iter()
@@ -276,7 +269,6 @@ pub fn prompt_secret(label: &str, key_default: &str) -> PromptResult<SecretChoic
 /// value. Same aim as [`prompt_secret`] — a command that returns the
 /// token — merging both acquisition paths behind one strategy prompt. The
 /// brokers are hidden unless the service advertises OAuth.
-#[cfg(any(feature = "imap", feature = "smtp", feature = "jmap"))]
 pub fn prompt_token(label: &str, key_default: &str, oauth: bool) -> PromptResult<SecretChoice> {
     let mut choices: Vec<Choice> = KeyringProvider::available()
         .into_iter()
@@ -299,7 +291,6 @@ pub fn prompt_token(label: &str, key_default: &str, oauth: bool) -> PromptResult
 /// **verbatim** (no namespace), so a pre-existing secret is read exactly
 /// as named; the value must already be stored under it, and a missing one
 /// surfaces when the caller tests the account right after.
-#[cfg(any(feature = "imap", feature = "smtp", feature = "jmap"))]
 fn prompt_choice(
     label: &str,
     key_default: &str,
