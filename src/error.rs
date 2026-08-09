@@ -22,7 +22,7 @@ impl ErrorReport {
         match result {
             Ok(res) => res,
             Err(err) => {
-                printer.out(ErrorReport::from(err)).unwrap();
+                let _ = printer.out(ErrorReport::from(err));
                 process::exit(1);
             }
         }

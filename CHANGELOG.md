@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed a panic when a failing command could not print its error report, which happens whenever stdout is gone (a closed pipe, most often): `ErrorReport::eval` unwrapped the write and died with "Print JSON to stdout error: Broken pipe" instead of the error the user was asking about. The write failure is now swallowed and the process still exits 1.
+
 - Made `wizard::keyring` reachable from every wizard, not just the mail ones.
 
   Its module declaration is gated on `wizard`, but each item inside it carried a second `any(imap, smtp, jmap)` gate, so a consumer enabling only `caldav` or `carddav` compiled the module and found it empty. The picker is protocol-agnostic, so the inner gates are gone and the module declaration is the only gate, as elsewhere in the crate.
