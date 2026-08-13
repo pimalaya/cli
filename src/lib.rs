@@ -1,6 +1,11 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 //! Shared building blocks for the Pimalaya command-line tools.
+//! Published for internal Pimalaya usage: the API follows the needs of
+//! its consumers (himalaya, neverest, cardamum, calendula and friends)
+//! and may change without notice. Third parties should treat it as
+//! private; the io-* protocol crates and pimalaya-stream are the
+//! supported surface.
 //!
 //! This crate factors out the pieces every Pimalaya CLI would
 //! otherwise reimplement: argument parsing glue, output rendering,
