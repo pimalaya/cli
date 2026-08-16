@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added `KeyringProvider::installed` and `TokenBroker::installed`, telling whether an entry's CLI is found on the `PATH`. Each derives the program name from its own read command, so no table of binary names is kept beside the commands themselves.
+
+### Changed
+
+- Ordered the credential picker by what the running system can actually do: `KeyringProvider::available` and `TokenBroker::available` now lead with the entries whose CLI is installed, the rest following in their wake. The sort is stable, so the native-first order of the providers and the reference-implementation-first order of the brokers survive inside each group.
+
+  Nothing is hidden: an entry that is not there is still offered, labelled `, not found on PATH` in the pick list, since installing it afterwards makes the very same configuration work. The lookup also tries the Windows extensions (`.exe`, `.cmd`, `.bat`), where a bare name is not a filename and the token brokers are present even though the keyring providers are not.
+
 ## [0.2.1] - 2026-08-14
 
 ### Added
