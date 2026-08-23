@@ -9,11 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Changed `CompletionCommand` back to printing the completion script to the standard output, as its documentation always claimed: `--dir` is now optional, and without it the script of the single given shell goes to stdout, ready for unix redirection.
+- Gave `CompletionCommand`, `ManualCommand` and `JsonSchemaCommand` the same shape: a positional list selecting what to generate, defaulting to everything, and an optional `--dir` deciding where it lands. Without a directory the single selected item is printed to the standard output, ready for unix redirection, and asking for several at once fails rather than picking one arbitrarily or concatenating them.
 
-  The directory it used to default to silently turned `<cmd> completion bash` into a file-writing command printing a report, which broke every packaging helper capturing stdout, Homebrew's `generate_completions_from_executable` among them.
+  `CompletionCommand` used to default its directory to the working one, which silently turned `<cmd> completion bash` into a file-writing command printing a report, against what its own documentation said. It broke every packaging helper capturing stdout, Homebrew's `generate_completions_from_executable` among them.
 
-  Passing `--dir` keeps the previous behaviour, one script per shell written in it. Asking for several shells without `--dir` now fails instead of writing a stream valid for no shell, and asking for no shell at all fails too, where it used to succeed doing nothing. Under `--json`, the script is wrapped in `{ "shell": ..., "script": ... }` so the flag keeps its promise.
+  `ManualCommand` and `JsonSchemaCommand` take their directory through `--dir` too, where it was a required positional argument: `<cmd> manual ./man` becomes `<cmd> manual --dir ./man`, and both now accept command names (`himalaya`, `himalaya-envelope`, `himalaya-envelope-list`) to generate a single page or schema. An unknown name fails instead of generating nothing.
+
+  Under `--json`, the item is wrapped in `{ "shell": ..., "script": ... }`, `{ "cmd": ..., "page": ... }` and `{ "cmd": ..., "schema": ... }` so the flag keeps its promise. The directory mode of the three now reports the same `{ "dir": ..., "scripts" | "pages" | "schemas": [...] }` structure, where the last two used to be a bare sentence.
 
 ## [0.2.2] - 2026-08-16
 

@@ -91,3 +91,16 @@ impl fmt::Display for Message {
         writeln!(f, "{}", &self.message)
     }
 }
+
+/// A [`Printer`] keeping the rendered output in memory, for tests.
+#[cfg(test)]
+#[derive(Default)]
+pub struct TestPrinter(pub String);
+
+#[cfg(test)]
+impl Printer for TestPrinter {
+    fn out<T: fmt::Display + Serialize>(&mut self, data: T) -> Result<()> {
+        self.0 = data.to_string();
+        Ok(())
+    }
+}

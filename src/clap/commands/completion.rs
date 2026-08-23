@@ -1,7 +1,7 @@
 use std::{fmt, fs, path::PathBuf};
 
 use anyhow::{Context, Result, bail};
-use clap::{Command, Parser, value_parser};
+use clap::{Command, Parser, ValueEnum, value_parser};
 use clap_complete::Shell;
 use log::debug;
 use serde::{Serialize, Serializer};
@@ -19,10 +19,8 @@ use crate::{clap::parsers::path_parser, printer::Printer};
 pub struct CompletionCommand {
     /// Shell(s) for which completion script should be generated for.
     ///
-    /// Only one shell can be given when the script goes to the
-    /// standard output, generating several at once requires a
-    /// directory.
-    #[arg(value_parser = value_parser!(Shell), required = true)]
+    /// Defaults to every supported shell, which requires a directory.
+    #[arg(value_parser = value_parser!(Shell))]
     pub shells: Vec<Shell>,
 
     /// Save completion scripts to the given directory.
@@ -36,8 +34,14 @@ impl CompletionCommand {
     pub fn execute(self, printer: &mut impl Printer, mut command: Command) -> Result<()> {
         let cmd_name = command.get_name().to_string();
 
+        let shells = if self.shells.is_empty() {
+            Shell::value_variants().to_vec()
+        } else {
+            self.shells
+        };
+
         let Some(dir) = self.dir else {
-            let [shell] = self.shells[..] else {
+            let [shell] = shells[..] else {
                 bail!(
                     "Writing several completion scripts to the standard output is ambiguous, use --dir to generate them as files"
                 );
@@ -57,7 +61,7 @@ impl CompletionCommand {
 
         let mut scripts = Vec::with_capacity(5);
 
-        for shell in self.shells {
+        for shell in shells {
             let path = clap_complete::generate_to(shell, &mut command, &cmd_name, &dir)?;
             let path = path.canonicalize().unwrap_or(path);
             debug!("generated {shell} completion script at {}", path.display());
@@ -118,25 +122,11 @@ pub fn serialize_shell<S: Serializer>(shell: &Shell, s: S) -> Result<S::Ok, S::E
 
 #[cfg(test)]
 mod tests {
-    use std::fmt;
-
-    use anyhow::Result;
     use clap::Command;
     use clap_complete::Shell;
-    use serde::Serialize;
 
     use super::CompletionCommand;
-    use crate::printer::Printer;
-
-    #[derive(Default)]
-    struct TestPrinter(String);
-
-    impl Printer for TestPrinter {
-        fn out<T: fmt::Display + Serialize>(&mut self, data: T) -> Result<()> {
-            self.0 = data.to_string();
-            Ok(())
-        }
-    }
+    use crate::printer::TestPrinter;
 
     #[test]
     fn single_shell_script_goes_to_output() {

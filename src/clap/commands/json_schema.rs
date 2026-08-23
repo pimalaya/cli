@@ -1,29 +1,37 @@
-use std::{collections::BTreeMap, fs, path::PathBuf};
+use std::{collections::BTreeMap, fmt, fs, path::PathBuf};
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 use clap::Parser;
-use log::info;
+use log::debug;
+use serde::Serialize;
 use serde_json::Value;
 
 use crate::{clap::parsers::path_parser, printer::Printer};
 
-/// Generate JSON Schemas of every command's JSON output to the given
-/// directory.
+/// Generate JSON Schema of the given command(s) JSON output.
 ///
-/// This command allows you to generate one JSON Schema per command
-/// describing the structure of its `--json` output, to the given
-/// directory. If the directory does not exist, it will be created. Any
-/// existing schema will be overriden.
+/// This command allows you to generate the JSON Schema describing the
+/// `--json` output of a given command. The schema is printed to the
+/// standard output, so it can be written to a file using unix
+/// redirection. Giving a directory instead writes one schema per
+/// command in it, creating the directory if it does not exist.
 #[derive(Debug, Parser)]
 pub struct JsonSchemaCommand {
-    /// Directory where JSON Schema files should be generated in.
-    #[arg(value_parser = path_parser)]
-    pub dir: PathBuf,
+    /// Command(s) for which JSON Schema should be generated for.
+    ///
+    /// A command is named after its full path, dash-separated, as in
+    /// `himalaya-envelope-list`. Defaults to every command, which
+    /// requires a directory.
+    pub cmds: Vec<String>,
+
+    /// Save JSON Schemas to the given directory.
+    #[arg(short, long, value_name = "PATH", value_parser = path_parser)]
+    pub dir: Option<PathBuf>,
 }
 
 impl JsonSchemaCommand {
-    /// Generates one `<command>.json` schema file per entry and reports
-    /// how many landed where.
+    /// Generates the JSON Schemas, either to the standard output or
+    /// to the given directory.
     ///
     /// The map is keyed by command name (e.g. `himalaya-envelope-list`)
     /// and valued by the already-built JSON Schema of that command's
@@ -35,22 +43,150 @@ impl JsonSchemaCommand {
     pub fn execute(
         self,
         printer: &mut impl Printer,
-        schemas: BTreeMap<String, Value>,
+        mut schemas: BTreeMap<String, Value>,
     ) -> Result<()> {
-        let dir = &self.dir;
-        let count = schemas.len();
-
-        fs::create_dir_all(dir)?;
-
-        for (name, schema) in schemas {
-            let json = serde_json::to_vec_pretty(&schema)?;
-            info!("generate JSON Schema for command {name}");
-            fs::write(dir.join(format!("{name}.json")), json)?;
+        for cmd in &self.cmds {
+            if !schemas.contains_key(cmd) {
+                bail!("Cannot find command {cmd}");
+            }
         }
 
-        printer.out(format!(
-            "{count} JSON Schema(s) successfully generated in {}",
-            dir.display()
-        ))
+        if !self.cmds.is_empty() {
+            schemas.retain(|cmd, _| self.cmds.contains(cmd));
+        }
+
+        let Some(dir) = self.dir else {
+            let mut schemas = schemas.into_iter();
+
+            let (Some((cmd, schema)), None) = (schemas.next(), schemas.next()) else {
+                bail!(
+                    "Writing several JSON Schemas to the standard output is ambiguous, use --dir to generate them as files"
+                );
+            };
+
+            debug!("generated {cmd} JSON Schema");
+
+            return printer.out(JsonSchema { cmd, schema });
+        };
+
+        let dir = dir.canonicalize().unwrap_or(dir);
+        fs::create_dir_all(&dir)?;
+
+        let mut paths = Vec::with_capacity(schemas.len());
+
+        for (cmd, schema) in schemas {
+            let json = serde_json::to_vec_pretty(&schema)?;
+
+            let path = dir.join(format!("{cmd}.json"));
+            fs::write(&path, json)?;
+            debug!("generated {cmd} JSON Schema at {}", path.display());
+            paths.push(Schema { cmd, path })
+        }
+
+        printer.out(JsonSchemas {
+            dir,
+            schemas: paths,
+        })
+    }
+}
+
+/// Defines a struct-wrapper to provide a JSON output.
+#[derive(Serialize)]
+struct JsonSchema {
+    pub cmd: String,
+    pub schema: Value,
+}
+
+impl fmt::Display for JsonSchema {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let json = serde_json::to_string_pretty(&self.schema).map_err(|_| fmt::Error)?;
+        writeln!(f, "{json}")
+    }
+}
+
+/// Defines a struct-wrapper to provide a JSON output.
+#[derive(Serialize)]
+struct JsonSchemas {
+    dir: PathBuf,
+    schemas: Vec<Schema>,
+}
+
+impl fmt::Display for JsonSchemas {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let n = self.schemas.len();
+        let p = self.dir.display();
+        writeln!(f, "{n} JSON Schema(s) successfully generated in {p}:")?;
+
+        for Schema { cmd, path } in &self.schemas {
+            let p = path.display();
+            writeln!(f, " - {cmd} JSON Schema at {p}")?;
+        }
+
+        Ok(())
+    }
+}
+
+/// Defines a struct-wrapper to provide a JSON output.
+#[derive(Serialize)]
+struct Schema {
+    pub cmd: String,
+    pub path: PathBuf,
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeMap;
+
+    use serde_json::json;
+
+    use super::JsonSchemaCommand;
+    use crate::printer::TestPrinter;
+
+    fn schemas() -> BTreeMap<String, serde_json::Value> {
+        BTreeMap::from_iter([
+            ("test-a".into(), json!({ "type": "string" })),
+            ("test-b".into(), json!({ "type": "number" })),
+        ])
+    }
+
+    #[test]
+    fn single_command_schema_goes_to_output() {
+        let cmd = JsonSchemaCommand {
+            cmds: vec!["test-b".into()],
+            dir: None,
+        };
+
+        let mut printer = TestPrinter::default();
+        cmd.execute(&mut printer, schemas()).unwrap();
+
+        assert_eq!(printer.0, "{\n  \"type\": \"number\"\n}\n");
+    }
+
+    #[test]
+    fn several_commands_without_dir_are_rejected() {
+        let cmd = JsonSchemaCommand {
+            cmds: Vec::new(),
+            dir: None,
+        };
+
+        let err = cmd
+            .execute(&mut TestPrinter::default(), schemas())
+            .unwrap_err();
+
+        assert!(err.to_string().contains("use --dir"), "{err}");
+    }
+
+    #[test]
+    fn unknown_command_is_rejected() {
+        let cmd = JsonSchemaCommand {
+            cmds: vec!["test-c".into()],
+            dir: None,
+        };
+
+        let err = cmd
+            .execute(&mut TestPrinter::default(), schemas())
+            .unwrap_err();
+
+        assert_eq!(err.to_string(), "Cannot find command test-c");
     }
 }
