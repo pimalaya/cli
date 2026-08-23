@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-08-23
+
 ### Changed
 
 - Gave `CompletionCommand`, `ManualCommand` and `JsonSchemaCommand` the same shape: a positional list selecting what to generate, defaulting to everything, and an optional `--dir` deciding where it lands. Without a directory the single selected item is printed to the standard output, ready for unix redirection, and asking for several at once fails rather than picking one arbitrarily or concatenating them.
@@ -105,7 +107,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial published toolkit: clap arguments and commands, printer, logger, prompt, spinner, table, account wizards, error reporting, validators and build helpers.
 
-[unreleased]: https://github.com/pimalaya/cli/compare/v0.2.2..HEAD
+[unreleased]: https://github.com/pimalaya/cli/compare/v0.2.3..HEAD
+[0.2.3]: https://github.com/pimalaya/cli/compare/v0.2.2..v0.2.3
 [0.2.2]: https://github.com/pimalaya/cli/compare/v0.2.1..v0.2.2
 [0.2.1]: https://github.com/pimalaya/cli/compare/v0.2.0..v0.2.1
 [0.2.0]: https://github.com/pimalaya/cli/compare/v0.1.3..v0.2.0
