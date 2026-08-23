@@ -1,6 +1,6 @@
 use std::{fmt, fs, path::PathBuf};
 
-use anyhow::Result;
+use anyhow::{Context, Result, bail};
 use clap::{Command, Parser, value_parser};
 use clap_complete::Shell;
 use log::debug;
@@ -8,30 +8,53 @@ use serde::{Serialize, Serializer};
 
 use crate::{clap::parsers::path_parser, printer::Printer};
 
-/// Generate completion script for the give shell(s) to the given
-/// directory.
+/// Generate completion script for the given shell(s).
 ///
 /// This command allows you to generate completion script for a given
-/// shell. The script is printed to the standard output. If you want
-/// to write it to a file, just use unix redirection.
+/// shell. The script is printed to the standard output, so it can be
+/// written to a file using unix redirection. Giving a directory
+/// instead writes one script per shell in it, creating the directory
+/// if it does not exist.
 #[derive(Debug, Parser)]
 pub struct CompletionCommand {
-    /// Shell for which completion script should be generated for.
-    #[arg(value_parser = value_parser!(Shell))]
+    /// Shell(s) for which completion script should be generated for.
+    ///
+    /// Only one shell can be given when the script goes to the
+    /// standard output, generating several at once requires a
+    /// directory.
+    #[arg(value_parser = value_parser!(Shell), required = true)]
     pub shells: Vec<Shell>,
 
-    /// Save completion script to the given directory.
-    #[arg(short, long, value_name = "PATH", value_parser = path_parser, default_value = "./")]
-    pub dir: PathBuf,
+    /// Save completion scripts to the given directory.
+    #[arg(short, long, value_name = "PATH", value_parser = path_parser)]
+    pub dir: Option<PathBuf>,
 }
 
 impl CompletionCommand {
-    /// Generates the completion scripts and reports where they landed.
+    /// Generates the completion scripts, either to the standard
+    /// output or to the given directory.
     pub fn execute(self, printer: &mut impl Printer, mut command: Command) -> Result<()> {
-        let dir = self.dir.canonicalize().unwrap_or(self.dir);
+        let cmd_name = command.get_name().to_string();
+
+        let Some(dir) = self.dir else {
+            let [shell] = self.shells[..] else {
+                bail!(
+                    "Writing several completion scripts to the standard output is ambiguous, use --dir to generate them as files"
+                );
+            };
+
+            let mut script = Vec::new();
+            clap_complete::generate(shell, &mut command, cmd_name, &mut script);
+            let script = String::from_utf8(script)
+                .context("Read generated completion script as UTF-8 error")?;
+            debug!("generated {shell} completion script");
+
+            return printer.out(Completion { shell, script });
+        };
+
+        let dir = dir.canonicalize().unwrap_or(dir);
         fs::create_dir_all(&dir)?;
 
-        let cmd_name = command.get_name().to_string();
         let mut scripts = Vec::with_capacity(5);
 
         for shell in self.shells {
@@ -42,6 +65,20 @@ impl CompletionCommand {
         }
 
         printer.out(Completions { dir, scripts })
+    }
+}
+
+/// Defines a struct-wrapper to provide a JSON output.
+#[derive(Serialize)]
+struct Completion {
+    #[serde(serialize_with = "serialize_shell")]
+    pub shell: Shell,
+    pub script: String,
+}
+
+impl fmt::Display for Completion {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.script)
     }
 }
 
@@ -77,4 +114,54 @@ struct Script {
 
 pub fn serialize_shell<S: Serializer>(shell: &Shell, s: S) -> Result<S::Ok, S::Error> {
     s.serialize_str(&shell.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fmt;
+
+    use anyhow::Result;
+    use clap::Command;
+    use clap_complete::Shell;
+    use serde::Serialize;
+
+    use super::CompletionCommand;
+    use crate::printer::Printer;
+
+    #[derive(Default)]
+    struct TestPrinter(String);
+
+    impl Printer for TestPrinter {
+        fn out<T: fmt::Display + Serialize>(&mut self, data: T) -> Result<()> {
+            self.0 = data.to_string();
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn single_shell_script_goes_to_output() {
+        let cmd = CompletionCommand {
+            shells: vec![Shell::Bash],
+            dir: None,
+        };
+
+        let mut printer = TestPrinter::default();
+        cmd.execute(&mut printer, Command::new("test")).unwrap();
+
+        assert!(printer.0.starts_with("_test() {"), "{}", printer.0);
+    }
+
+    #[test]
+    fn several_shells_without_dir_are_rejected() {
+        let cmd = CompletionCommand {
+            shells: vec![Shell::Bash, Shell::Zsh],
+            dir: None,
+        };
+
+        let err = cmd
+            .execute(&mut TestPrinter::default(), Command::new("test"))
+            .unwrap_err();
+
+        assert!(err.to_string().contains("use --dir"), "{err}");
+    }
 }

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Changed `CompletionCommand` back to printing the completion script to the standard output, as its documentation always claimed: `--dir` is now optional, and without it the script of the single given shell goes to stdout, ready for unix redirection.
+
+  The directory it used to default to silently turned `<cmd> completion bash` into a file-writing command printing a report, which broke every packaging helper capturing stdout, Homebrew's `generate_completions_from_executable` among them.
+
+  Passing `--dir` keeps the previous behaviour, one script per shell written in it. Asking for several shells without `--dir` now fails instead of writing a stream valid for no shell, and asking for no shell at all fails too, where it used to succeed doing nothing. Under `--json`, the script is wrapped in `{ "shell": ..., "script": ... }` so the flag keeps its promise.
+
 ## [0.2.2] - 2026-08-16
 
 ### Added
