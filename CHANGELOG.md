@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-08-24
+
 ### Fixed
 
 - Silenced the logger when neither `--log-level` nor `RUST_LOG` is given. `env_logger` falls back to the `error` level when no directive is set, so error lines coming from the libraries were printed to the standard error stream on a bare invocation. The level now starts at `off`, `RUST_LOG` raising it back as before.
@@ -112,7 +114,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial published toolkit: clap arguments and commands, printer, logger, prompt, spinner, table, account wizards, error reporting, validators and build helpers.
 
-[unreleased]: https://github.com/pimalaya/cli/compare/v0.2.3..HEAD
+[unreleased]: https://github.com/pimalaya/cli/compare/v0.2.4..HEAD
+[0.2.4]: https://github.com/pimalaya/cli/compare/v0.2.3..v0.2.4
 [0.2.3]: https://github.com/pimalaya/cli/compare/v0.2.2..v0.2.3
 [0.2.2]: https://github.com/pimalaya/cli/compare/v0.2.1..v0.2.2
 [0.2.1]: https://github.com/pimalaya/cli/compare/v0.2.0..v0.2.1
