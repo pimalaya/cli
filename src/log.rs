@@ -4,6 +4,7 @@ use std::fs::OpenOptions;
 
 use anyhow::Result;
 use env_logger::{Builder, Target};
+use log::LevelFilter;
 
 use crate::clap::args::LogFlags;
 
@@ -25,12 +26,10 @@ impl Logger {
 
         match log.level {
             Some(level) => {
-                // NOTE: explicit `--log-level` overrides any `RUST_LOG`.
                 builder.filter_level(level.into());
             }
             None => {
-                // NOTE: defer to `RUST_LOG` (if unset, env_logger filters
-                // everything, same as `--log-level off`).
+                builder.filter_level(LevelFilter::Off);
                 builder.parse_default_env();
             }
         }

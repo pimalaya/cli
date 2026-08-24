@@ -33,7 +33,7 @@ impl ErrorReport {
     }
 
     fn suggestions(&self) -> Option<&str> {
-        if !log_enabled!(Level::Debug) || !log_enabled!(Level::Trace) {
+        if !log_enabled!(Level::Debug) {
             Some("Run with --log-level to enable more verbose logs")
         } else {
             None

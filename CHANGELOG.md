@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Silenced the logger when neither `--log-level` nor `RUST_LOG` is given. `env_logger` falls back to the `error` level when no directive is set, so error lines coming from the libraries were printed to the standard error stream on a bare invocation. The level now starts at `off`, `RUST_LOG` raising it back as before.
+- Stopped suggesting `--log-level` in error reports once `--log-level debug` was already given.
+
 ## [0.2.3] - 2026-08-23
 
 ### Changed

@@ -17,8 +17,8 @@
 //! it exists to talk to a terminal, a filesystem and a human, so it
 //! never targets no_std.
 //!
-//! The clap module wires shared arguments and the completion and
-//! manual commands into a binary's parser. The printer and error
+//! The clap module wires shared arguments and the completion, manual
+//! and JSON Schema commands into a binary's parser. The printer and error
 //! modules render command output and failures to stdout, while the log
 //! module initializes the logger. The prompt, spinner and table
 //! modules handle interactive input and formatted output, and the
