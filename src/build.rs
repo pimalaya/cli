@@ -5,7 +5,7 @@
 //! binary.
 
 use std::{
-    collections::HashMap,
+    collections::BTreeMap,
     env::{self, VarError},
 };
 
@@ -25,7 +25,7 @@ use serde::Deserialize;
 pub fn features_env(cargo: &str) {
     #[derive(Deserialize)]
     struct Config {
-        features: HashMap<String, Vec<String>>,
+        features: BTreeMap<String, Vec<String>>,
     }
 
     impl Config {
