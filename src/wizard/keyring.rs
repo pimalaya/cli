@@ -151,12 +151,13 @@ impl KeyringProvider {
             Self::KwalletQuery => format!("kwallet-query -w {} kdewallet", path(service, key)),
             // `security` takes the secret as an argument, not on stdin;
             // `$(cat)` bridges it, and `-U` overwrites an existing entry.
-            Self::Security => match service {
-                Some(service) => {
-                    format!("security add-generic-password -U -s {service} -a {key} -w \"$(cat)\"")
-                }
-                None => format!("security add-generic-password -U -a {key} -w \"$(cat)\""),
-            },
+            // It also requires `-s`, so an entry without a namespace names
+            // both the service and the account, the read by account alone
+            // still finding it.
+            Self::Security => {
+                let service = service.unwrap_or(key);
+                format!("security add-generic-password -U -s {service} -a {key} -w \"$(cat)\"")
+            }
             Self::Pass => format!("pass insert -m -f {}", path(service, key)),
         }
     }
@@ -499,6 +500,18 @@ mod tests {
                 "acme",
                 "-w"
             ],
+        );
+    }
+
+    #[test]
+    fn keyring_write_command_names_a_security_service_without_a_namespace() {
+        assert_eq!(
+            KeyringProvider::Security.write_command(None, "acme"),
+            "security add-generic-password -U -s acme -a acme -w \"$(cat)\"",
+        );
+        assert_eq!(
+            KeyringProvider::Security.write_command(Some("ortie"), "acme"),
+            "security add-generic-password -U -s ortie -a acme -w \"$(cat)\"",
         );
     }
 

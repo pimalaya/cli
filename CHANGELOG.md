@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed the macOS Keychain write command generated without a service: `security add-generic-password` requires `-s`, so the entry now names both the service and the account. See [ortie#15](https://github.com/pimalaya/ortie/issues/15).
+
 ## [0.2.4] - 2026-08-24
 
 ### Fixed
