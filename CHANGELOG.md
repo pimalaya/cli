@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.6] - 2026-10-02
+
+### Added
+
+- Added `table::sanitize`, which replaces control and bidi characters with U+FFFD so strings from a message or a server cannot drive the terminal from a table cell. See [himalaya#771](https://github.com/pimalaya/himalaya/pull/771).
+
 ## [0.2.5] - 2026-09-27
 
 ### Changed
@@ -124,7 +130,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial published toolkit: clap arguments and commands, printer, logger, prompt, spinner, table, account wizards, error reporting, validators and build helpers.
 
-[unreleased]: https://github.com/pimalaya/cli/compare/v0.2.5..HEAD
+[unreleased]: https://github.com/pimalaya/cli/compare/v0.2.6..HEAD
+[0.2.6]: https://github.com/pimalaya/cli/compare/v0.2.5..v0.2.6
 [0.2.5]: https://github.com/pimalaya/cli/compare/v0.2.4..v0.2.5
 [0.2.4]: https://github.com/pimalaya/cli/compare/v0.2.3..v0.2.4
 [0.2.3]: https://github.com/pimalaya/cli/compare/v0.2.2..v0.2.3
