@@ -110,7 +110,7 @@ impl KeyringProvider {
                 Some(service) => {
                     argv(["secret-tool", "lookup", "service", service, "account", key])
                 }
-                None => argv(["secret-tool", "lookup", "account", key]),
+                None => secret_tool_lookup("account", key),
             },
             Self::KwalletQuery => {
                 let entry = path(service, key);
@@ -274,6 +274,14 @@ fn argv<const N: usize>(parts: [&str; N]) -> Vec<String> {
     parts.iter().map(|part| part.to_string()).collect()
 }
 
+/// The argv looking up the `secret-tool` entry whose `attribute` is `key`.
+///
+/// `account` is the attribute a pre-existing entry is read by when none is
+/// named; a KeePassXC entry keyed by its `Title` is read by `Title`.
+fn secret_tool_lookup(attribute: &str, key: &str) -> Vec<String> {
+    argv(["secret-tool", "lookup", attribute, key])
+}
+
 /// Renders a path-based entry: `key` alone, or `service/key` when a
 /// namespace is given.
 fn path(service: Option<&str>, key: &str) -> String {
@@ -414,6 +422,27 @@ fn prompt_choice(
     choices: Vec<Choice>,
 ) -> PromptResult<SecretChoice> {
     match prompt::item(format!("{label} strategy:"), choices, None)? {
+        Choice::Keyring {
+            provider: KeyringProvider::SecretTool,
+            ..
+        } => {
+            let attribute = prompt::text(
+                format!("{label} keyring attribute:"),
+                Some("account".to_owned()),
+            )?;
+            let key = prompt::text(
+                format!("{label} keyring entry:"),
+                Some(key_default.to_owned()),
+            )?;
+
+            // A blank attribute cannot name anything, so it reads by `account`.
+            let attribute = match attribute.trim() {
+                "" => "account",
+                attribute => attribute,
+            };
+
+            Ok(SecretChoice::Command(secret_tool_lookup(attribute, &key)))
+        }
         Choice::Keyring { provider, .. } => {
             let key = prompt::text(
                 format!("{label} keyring entry:"),
@@ -512,6 +541,18 @@ mod tests {
         assert_eq!(
             KeyringProvider::Security.write_command(Some("ortie"), "acme"),
             "security add-generic-password -U -s ortie -a acme -w \"$(cat)\"",
+        );
+    }
+
+    #[test]
+    fn secret_tool_lookup_reads_the_named_attribute() {
+        assert_eq!(
+            secret_tool_lookup("Title", "disroot"),
+            ["secret-tool", "lookup", "Title", "disroot"],
+        );
+        assert_eq!(
+            KeyringProvider::SecretTool.read_command(None, "disroot"),
+            secret_tool_lookup("account", "disroot"),
         );
     }
 
