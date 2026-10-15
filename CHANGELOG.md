@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added a prompt for the attribute a `secret-tool` keyring entry is read by, defaulting to `account`, so an entry keyed by its `Title` (the KeePassXC pattern) can be picked. The lookup is `secret-tool lookup <attribute> <entry>`.
+- Added a prompt for the attribute a `secret-tool` keyring entry is read by, defaulting to `account`, so an entry keyed by its `Title` (the KeePassXC pattern) can be picked. The lookup is `secret-tool lookup <attribute> <entry>`. ([himalaya#745](https://github.com/pimalaya/himalaya/issues/745))
 
 ## [0.2.6] - 2026-10-02
 

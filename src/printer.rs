@@ -88,7 +88,7 @@ impl Message {
 
 impl fmt::Display for Message {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "{}", &self.message)
+        writeln!(f, "{}", self.message)
     }
 }
 

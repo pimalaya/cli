@@ -435,7 +435,8 @@ fn prompt_choice(
                 Some(key_default.to_owned()),
             )?;
 
-            // A blank attribute cannot name anything, so it reads by `account`.
+            // NOTE: a blank attribute cannot name anything, so it reads
+            // by `account`.
             let attribute = match attribute.trim() {
                 "" => "account",
                 attribute => attribute,
