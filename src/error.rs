@@ -183,8 +183,10 @@ impl<C: ErrorCode> JsonSchema for ErrorReport<C> {
     }
 }
 
-/// The failure object printed under `--json`, the one shape both the
-/// serialization and the schema of [`ErrorReport`] come from.
+// NOTE: the one shape both the serialization and the schema of
+// ErrorReport come from. Its doc comment below is the schema description.
+
+/// The failure object a command prints instead of its output.
 #[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct ErrorReportOutput<C> {
