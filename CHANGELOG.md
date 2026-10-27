@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added a prompt for the attribute a `secret-tool` keyring entry is read by, defaulting to `account`, so an entry keyed by its `Title` (the KeePassXC pattern) can be picked. The lookup is `secret-tool lookup <attribute> <entry>`. ([himalaya#745](https://github.com/pimalaya/himalaya/issues/745))
+- Added stable error codes: a binary declares its own `ErrorCode` vocabulary (kebab-case values), raises an `error::CodedError` anywhere in the chain, and evaluates its result with `ErrorReport::<Code>::eval_coded`, which prints `code` beside `error` under `--json`. `error::code_of` finds the code of a chain. `ErrorReport` now implements `JsonSchema`, so a binary can register the schema of its failure object.
+- Added `JsonSchemaRegistry::non_object_roots`, listing the commands whose payload is not a JSON object, for a binary's registry test to assert empty (MCP takes a structured result only as an object).
+
+### Changed
+
+- `JsonSchemaCommand::execute` takes a `JsonSchemaRegistry` (binary name, version, schemas) instead of a bare map, and stamps each schema with `$id` = `https://pimalaya.org/schemas/<bin>/v<major>/<key>.json` (`v0.<minor>` before 1.0). The contract version is the binary's major version.
+- Piped `--json` output is now newline-delimited: each value is followed by a newline and flushed, so several values printed by one process (a REPL session, a watch) no longer run together.
+- The `terminal` feature now pulls `schemars`.
 
 ## [0.2.6] - 2026-10-02
 

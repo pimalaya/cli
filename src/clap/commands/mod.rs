@@ -6,5 +6,7 @@ mod manual;
 
 #[doc(inline)]
 pub use self::{
-    completion::CompletionCommand, json_schema::JsonSchemaCommand, manual::ManualCommand,
+    completion::CompletionCommand,
+    json_schema::{JsonSchemaCommand, JsonSchemaRegistry},
+    manual::ManualCommand,
 };

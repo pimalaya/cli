@@ -25,7 +25,7 @@ jmap = ["wizard", "dep:secrecy"]
 caldav = ["wizard", "dep:secrecy"]
 carddav = ["wizard", "dep:secrecy"]
 wizard = ["prompt"]
-terminal = ["dep:anyhow", "dep:clap", "dep:clap_complete", "dep:clap_mangen", "dep:env_logger", "dep:serde", "dep:serde_json", "dep:shellexpand"]
+terminal = ["dep:anyhow", "dep:clap", "dep:clap_complete", "dep:clap_mangen", "dep:env_logger", "dep:serde", "dep:schemars", "dep:serde_json", "dep:shellexpand"]
 build = ["dep:git2", "dep:serde", "dep:toml"]
 table = ["dep:comfy-table"]
 spinner = ["dep:crossterm", "dep:ctrlc"]
@@ -52,6 +52,7 @@ env_logger = { version = "0.11", default-features = false, features = ["auto-col
 git2 = { version = "0.21", default-features = false, optional = true }
 inquire = { version = "0.9", optional = true }
 log = "0.4"
+schemars = { version = "1", optional = true }
 secrecy = { version = "0.10", features = ["serde"], optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 serde_json = { version = "1", optional = true }

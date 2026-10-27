@@ -56,8 +56,13 @@ impl Printer for StdoutPrinter {
                     .context("Print pretty JSON to stdout error")?;
                 writeln!(self.stdout)?;
             } else {
+                // NOTE: one value per line, flushed, so a process
+                // printing several values (a REPL session, a watch)
+                // emits newline-delimited JSON.
                 serde_json::to_writer(&mut self.stdout, &data)
                     .context("Print JSON to stdout error")?;
+                writeln!(self.stdout)?;
+                self.stdout.flush()?;
             }
         } else {
             write!(self.stdout, "{data}")?;
