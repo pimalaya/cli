@@ -2,161 +2,167 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-03
+
 ### Added
 
-- Added a prompt for the attribute a `secret-tool` keyring entry is read by, defaulting to `account`, so an entry keyed by its `Title` (the KeePassXC pattern) can be picked. The lookup is `secret-tool lookup <attribute> <entry>`. ([himalaya#745](https://github.com/pimalaya/himalaya/issues/745))
-- Added stable error codes: a binary declares its own `ErrorCode` vocabulary (kebab-case values), raises an `error::CodedError` anywhere in the chain, and evaluates its result with `ErrorReport::<Code>::eval_coded`, which prints `code` beside `error` under `--json`. `error::code_of` finds the code of a chain. `ErrorReport` now implements `JsonSchema`, so a binary can register the schema of its failure object.
-- Added `JsonSchemaRegistry::non_object_roots`, listing the commands whose payload is not a JSON object, for a binary's registry test to assert empty (MCP takes a structured result only as an object).
-- Added events: `Printer::event` writes what a command observes while it runs, before its result, as one flushed JSON line under `--json`, and as text on a terminal only, so a redirected stdout captures the result alone. An event's root carries `event`, a kebab-case name. The registry gains an `events` map, written by `json-schema` as `<key>.events.json`.
-- Added `Printer::out_bytes` and `output::Bytes`: bytes go verbatim to stdout in text mode and as `{data, size, mime}`, `data` in base64, under `--json`.
-- Added `output::Paginated` (a listing beside its `nextPage` cursor, `null` once complete) and `clap::args::PageTokenArg` (`--page-token`, which takes the cursor back).
-- Added `error::PartialOutcome` and `error::partial_outcome_of`: a command that printed its result but did not fully succeed returns it, and `ErrorReport::eval_coded` exits with its status (2 or above) without printing a failure object. `error::EXIT_FAILURE` and `error::EXIT_PARTIAL` name the statuses.
-- Added `JsonSchemaRegistry::new`, `insert`, `insert_events` and `check`: `new` registers the `completion`, `manual` and `json-schema` outputs, and `check` reports, against the clap command tree, every runnable command without a schema, every key naming no command, a result holding an `event` key, and an event without one. `clap::commands::output_schema` builds a schema with the serialize contract, so a key always printed is required.
+- Added the `secret-tool` attribute prompt to `wizard::keyring`, defaulting to `account` ([pimalaya/himalaya#745](https://github.com/pimalaya/himalaya/issues/745)).
+- Added `error::ErrorCode`, the trait of a binary's error codes.
+- Added `error::NoErrorCode`, the code type of a binary without codes.
+- Added `error::CodedError`, an error carrying a code.
+- Added `error::code_of`, finding the code in an error chain.
+- Added `error::ErrorReport::eval_coded`, printing the failure object with its code.
+- Added `error::PartialOutcome`, exiting 2 or above after a printed result.
+- Added `error::partial_outcome_of`, finding the partial outcome in an error chain.
+- Added `error::EXIT_FAILURE` and `error::EXIT_PARTIAL`.
+- Added the `JsonSchema` implementation of `error::ErrorReport`.
+- Added `printer::Printer::event`, printing an event before the result.
+
+  Under `--json` it prints one JSON line, in text mode on a terminal only.
+
+- Added `printer::Printer::out_bytes`, printing bytes, base64-encoded under `--json`.
+- Added `output::Bytes`, the payload of `out_bytes`.
+- Added `output::Paginated`, a listing with its `nextPage` cursor.
+- Added `clap::args::PageTokenArg`, the `--page-token` argument.
+- Added `clap::commands::JsonSchemaRegistry`, the result and event schemas of a binary.
+- Added `clap::commands::output_schema`, building the schema of a command output.
 
 ### Changed
 
-- **Breaking:** the failure object always prints `code`, `null` when the chain carries none, and its schema marks it required.
-- **Breaking:** `Printer` requires `event` and `out_bytes`.
-- **Breaking:** `JsonSchemaRegistry` carries an `events` map, and `non_object_roots` returns owned names, event schemas named `<key>.events`.
-- **Breaking:** the `completion`, `manual` and `json-schema` JSON outputs are untagged alternatives with a schema, the single-item shape (`{shell, script}`, `{cmd, page}`, `{cmd, schema}`) or the files written (`{dir, scripts}`, `{dir, pages}`, `{dir, schemas}`).
+- **BREAKING**: Changed `printer::Printer` to require `event` and `out_bytes`.
+- **BREAKING**: Changed `clap::commands::JsonSchemaCommand::execute` to take a `JsonSchemaRegistry`.
 
-- `JsonSchemaCommand::execute` takes a `JsonSchemaRegistry` (binary name, version, schemas) instead of a bare map, and stamps each schema with `$id` = `https://pimalaya.org/schemas/<bin>/v<major>/<key>.json` (`v0.<minor>` before 1.0). The contract version is the binary's major version.
-- Piped `--json` output is now newline-delimited: each value is followed by a newline and flushed, so several values printed by one process (a REPL session, a watch) no longer run together.
-- The `terminal` feature now pulls `schemars`.
+  Each schema gets an `$id` carrying the binary's contract version (`v<major>`, `v0.<minor>` before 1.0).
+
+- Changed the `--json` failure object to carry a `code`, `null` when none applies.
+- Changed piped `--json` output to newline-delimited JSON.
 
 ### Removed
 
-- **Breaking:** removed `printer::Message`. Every output is a described value: a confirmation names what it acted on in a typed receipt, and its sentence is the text form of that data.
+- **BREAKING**: Removed `printer::Message`.
 
 ## [0.2.6] - 2026-10-02
 
 ### Added
 
-- Added `table::sanitize`, which replaces control and bidi characters with U+FFFD so strings from a message or a server cannot drive the terminal from a table cell. See [himalaya#771](https://github.com/pimalaya/himalaya/pull/771).
+- Added `table::sanitize`, replacing control and bidi characters with U+FFFD ([pimalaya/himalaya#771](https://github.com/pimalaya/himalaya/pull/771)).
 
 ## [0.2.5] - 2026-09-27
 
 ### Changed
 
-- Raised the minimum supported Rust version to 1.88.
+- Raised the minimum supported Rust version from 1.87 to 1.88.
 
 ### Fixed
 
-- Fixed the macOS Keychain write command generated without a service: `security add-generic-password` requires `-s`, so the entry now names both the service and the account. See [ortie#15](https://github.com/pimalaya/ortie/issues/15).
+- Fixed `wizard::keyring::KeyringProvider::write_command` omitting the macOS Keychain service ([pimalaya/ortie#15](https://github.com/pimalaya/ortie/issues/15)).
 
 ## [0.2.4] - 2026-08-24
 
 ### Fixed
 
-- Silenced the logger when neither `--log-level` nor `RUST_LOG` is given. `env_logger` falls back to the `error` level when no directive is set, so error lines coming from the libraries were printed to the standard error stream on a bare invocation. The level now starts at `off`, `RUST_LOG` raising it back as before.
-- Stopped suggesting `--log-level` in error reports once `--log-level debug` was already given.
+- Fixed the logger printing library errors when neither `--log-level` nor `RUST_LOG` is given.
+- Fixed error reports suggesting `--log-level` when `--log-level debug` was already given.
 
 ## [0.2.3] - 2026-08-23
 
 ### Changed
 
-- Gave `CompletionCommand`, `ManualCommand` and `JsonSchemaCommand` the same shape: a positional list selecting what to generate, defaulting to everything, and an optional `--dir` deciding where it lands. Without a directory the single selected item is printed to the standard output, ready for unix redirection, and asking for several at once fails rather than picking one arbitrarily or concatenating them.
+- Changed `clap::commands::CompletionCommand`, `ManualCommand` and `JsonSchemaCommand` to take a positional selection and an optional `--dir`.
 
-  `CompletionCommand` used to default its directory to the working one, which silently turned `<cmd> completion bash` into a file-writing command printing a report, against what its own documentation said. It broke every packaging helper capturing stdout, Homebrew's `generate_completions_from_executable` among them.
+  Without `--dir`, the one selected item goes to stdout. `<cmd> manual ./man` becomes `<cmd> manual --dir ./man`.
 
-  `ManualCommand` and `JsonSchemaCommand` take their directory through `--dir` too, where it was a required positional argument: `<cmd> manual ./man` becomes `<cmd> manual --dir ./man`, and both now accept command names (`himalaya`, `himalaya-envelope`, `himalaya-envelope-list`) to generate a single page or schema. An unknown name fails instead of generating nothing.
-
-  Under `--json`, the item is wrapped in `{ "shell": ..., "script": ... }`, `{ "cmd": ..., "page": ... }` and `{ "cmd": ..., "schema": ... }` so the flag keeps its promise. The directory mode of the three now reports the same `{ "dir": ..., "scripts" | "pages" | "schemas": [...] }` structure, where the last two used to be a bare sentence.
+- Changed their `--json` output to `{shell, script}`, `{cmd, page}` and `{cmd, schema}`, or `{dir, scripts | pages | schemas}` with `--dir`.
 
 ## [0.2.2] - 2026-08-16
 
 ### Added
 
-- Added `KeyringProvider::installed` and `TokenBroker::installed`, telling whether an entry's CLI is found on the `PATH`. Each derives the program name from its own read command, so no table of binary names is kept beside the commands themselves.
+- Added `wizard::keyring::KeyringProvider::installed`, telling whether the provider's CLI is on the `PATH`.
+- Added `wizard::keyring::TokenBroker::installed`, telling whether the broker's CLI is on the `PATH`.
 
 ### Changed
 
-- Ordered the credential picker by what the running system can actually do: `KeyringProvider::available` and `TokenBroker::available` now lead with the entries whose CLI is installed, the rest following in their wake. The sort is stable, so the native-first order of the providers and the reference-implementation-first order of the brokers survive inside each group.
+- Changed `wizard::keyring::KeyringProvider::available` and `TokenBroker::available` to list installed entries first.
 
-  Nothing is hidden: an entry that is not there is still offered, labelled `, not found on PATH` in the pick list, since installing it afterwards makes the very same configuration work. The lookup also tries the Windows extensions (`.exe`, `.cmd`, `.bat`), where a bare name is not a filename and the token brokers are present even though the keyring providers are not.
+  Missing entries stay offered, labelled `not found on PATH`.
 
 ## [0.2.1] - 2026-08-14
 
 ### Added
 
-- Added `footer!`, a macro building the `--help` footer every Pimalaya binary shares.
-
-  It expands to the bug tracker of the calling crate, taken from its `CARGO_PKG_REPOSITORY`, the sponsoring page, and the line saying the program is funded by grants and donations. Binaries pass it to clap as `#[command(after_help = footer!())]`, so the links land on the screen a bare invocation prints rather than only in a README nobody reaches from a terminal.
+- Added `footer!`, building the `--help` footer every Pimalaya binary shares.
 
 ### Changed
 
-- Documented the crate as internal to Pimalaya: its API follows the needs of its consumers and may change without notice, so third parties should treat it as private. The io-* protocol crates and pimalaya-stream are the supported surface.
+- Documented the crate as internal to Pimalaya.
 
 ### Fixed
 
-- Fixed a panic when a failing command could not print its error report, which happens whenever stdout is gone (a closed pipe, most often): `ErrorReport::eval` unwrapped the write and died with "Print JSON to stdout error: Broken pipe" instead of the error the user was asking about. The write failure is now swallowed and the process still exits 1.
-
-- Made `wizard::keyring` reachable from every wizard, not just the mail ones.
-
-  Its module declaration is gated on `wizard`, but each item inside it carried a second `any(imap, smtp, jmap)` gate, so a consumer enabling only `caldav` or `carddav` compiled the module and found it empty. The picker is protocol-agnostic, so the inner gates are gone and the module declaration is the only gate, as elsewhere in the crate.
+- Fixed `error::ErrorReport::eval` panicking when stdout is gone.
+- Fixed `wizard::keyring` compiling empty without the `imap`, `smtp` or `jmap` feature.
 
 ## [0.2.0] - 2026-08-07
 
 ### Changed
 
-- **BREAKING** Bumped `comfy-table` from v7 to v8, which `table` re-exports wholesale.
+- **BREAKING**: Changed the `comfy-table` dependency, re-exported by `table`, from 7 to 8.
 
-  v8 removes the positional preset string: `Table::load_preset(&str)` becomes `Table::load_style(TableStyle)`, the `presets::*` constants change type from `&str` to `TableStyle`, and `Table::{set_style, style, remove_style, current_style_as_preset, apply_modifier}`, the `modifiers` module and the `TableComponent` enum are gone. Rounded corners and solid inner borders are now `TableStyle::{with_rounded_corners, with_solid_inner_borders}`. The default truncation indicator changed from `...` to `…`.
+  `Table::load_preset(&str)` becomes `Table::load_style(TableStyle)`, and the truncation indicator `...` becomes `…`.
 
 ## [0.1.3] - 2026-07-25
 
 ### Added
 
-- Added `clap::commands::JsonSchemaCommand`, a ready-made command generating one JSON Schema file per command output to a directory.
-
-  It mirrors `ManualCommand`: the binary passes a map of command name to that command's output schema (as a `serde_json::Value`), and the command serialises each entry to `<name>.json`, reporting how many landed where. The toolkit stays schema-library-agnostic by taking pre-built `serde_json::Value` schemas rather than depending on schemars.
+- Added `clap::commands::JsonSchemaCommand`, generating one JSON Schema file per command output.
 
 ## [0.1.2] - 2026-07-25
 
 ### Added
 
-- Added `wizard::keyring`, an OS-aware credential-provider picker shared by the account wizards.
-
-  A password is read from a well-known keyring CLI (`secret-tool`, `kwallet-query`, `security` or `pass`), an OAuth 2.0 access token from a well-known token broker (`ortie`, `pizauth` or `oama`), a custom shell command, or stored raw in the configuration. Known providers and brokers yield an argv command serialized as a TOML array; only custom commands fall back to a shell string.
+- Added `wizard::keyring`, an OS-aware credential provider picker for the account wizards.
 
 ### Changed
 
-- Reworked the `imap` and `smtp` wizards to read credentials through the new `wizard::keyring` picker.
+- Changed the `imap` and `smtp` wizards to read credentials through `wizard::keyring`.
 
 ## [0.1.1] - 2026-07-17
 
 ### Added
 
-- Added `prompt::items`, a multi-select wrapping `inquire::MultiSelect`: it returns the chosen items and takes the item indices selected by default.
+- Added `prompt::items`, a multi-select over `inquire::MultiSelect`.
 
 ### Changed
 
+- Changed the default features to the full toolkit.
+
+### Removed
+
 - Removed filtering from `prompt::item` and `prompt::items`.
-- Enabled the full toolkit by default, so `cargo add pimalaya-cli` pulls every feature; consumers selecting features keep using `default-features = false`.
 
 ## [0.1.0] - 2026-07-15
 
 ### Added
 
-- Documented every public item, so docs.rs now builds the full API reference.
+- Added documentation to every public item.
 
 ### Changed
 
-- Relicensed from MIT to `MIT OR Apache-2.0`, matching the rest of the Pimalaya crates.
-- Made the `imap`, `smtp`, `jmap`, `caldav` and `carddav` features enable `wizard`, since each only gates its wizard submodule and was inert without it.
+- Relicensed under `MIT OR Apache-2.0`.
+- Changed the `imap`, `smtp`, `jmap`, `caldav` and `carddav` features to enable `wizard`.
 
 ## [0.0.2] - 2026-07-12
 
 ### Added
 
-- Initial published toolkit: clap arguments and commands, printer, logger, prompt, spinner, table, account wizards, error reporting, validators and build helpers.
+- Added the initial toolkit: clap arguments and commands, printer, logger, prompt, spinner, table, account wizards, error reporting, validators and build helpers.
 
-[unreleased]: https://github.com/pimalaya/cli/compare/v0.2.6..HEAD
+[unreleased]: https://github.com/pimalaya/cli/compare/v0.3.0..HEAD
+[0.3.0]: https://github.com/pimalaya/cli/compare/v0.2.6..v0.3.0
 [0.2.6]: https://github.com/pimalaya/cli/compare/v0.2.5..v0.2.6
 [0.2.5]: https://github.com/pimalaya/cli/compare/v0.2.4..v0.2.5
 [0.2.4]: https://github.com/pimalaya/cli/compare/v0.2.3..v0.2.4
