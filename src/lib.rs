@@ -19,8 +19,9 @@
 //!
 //! The clap module wires shared arguments and the completion, manual
 //! and JSON Schema commands into a binary's parser. The printer and error
-//! modules render command output and failures to stdout, while the log
-//! module initializes the logger. The prompt, spinner and table
+//! modules render command output, events and failures to stdout, the
+//! output module holds the shapes every binary shares (bytes, pages),
+//! and the log module initializes the logger. The prompt, spinner and table
 //! modules handle interactive input and formatted output, and the
 //! validator module holds reusable value parsers. The wizard module
 //! collects account settings per protocol (IMAP, SMTP, JMAP, CalDAV,
@@ -35,6 +36,8 @@ pub mod clap;
 pub mod error;
 #[cfg(feature = "terminal")]
 pub mod log;
+#[cfg(feature = "terminal")]
+pub mod output;
 #[cfg(feature = "terminal")]
 pub mod printer;
 #[cfg(feature = "prompt")]

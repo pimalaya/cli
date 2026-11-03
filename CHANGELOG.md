@@ -12,12 +12,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a prompt for the attribute a `secret-tool` keyring entry is read by, defaulting to `account`, so an entry keyed by its `Title` (the KeePassXC pattern) can be picked. The lookup is `secret-tool lookup <attribute> <entry>`. ([himalaya#745](https://github.com/pimalaya/himalaya/issues/745))
 - Added stable error codes: a binary declares its own `ErrorCode` vocabulary (kebab-case values), raises an `error::CodedError` anywhere in the chain, and evaluates its result with `ErrorReport::<Code>::eval_coded`, which prints `code` beside `error` under `--json`. `error::code_of` finds the code of a chain. `ErrorReport` now implements `JsonSchema`, so a binary can register the schema of its failure object.
 - Added `JsonSchemaRegistry::non_object_roots`, listing the commands whose payload is not a JSON object, for a binary's registry test to assert empty (MCP takes a structured result only as an object).
+- Added events: `Printer::event` writes what a command observes while it runs, before its result, as one flushed JSON line under `--json`, and as text on a terminal only, so a redirected stdout captures the result alone. An event's root carries `event`, a kebab-case name. The registry gains an `events` map, written by `json-schema` as `<key>.events.json`.
+- Added `Printer::out_bytes` and `output::Bytes`: bytes go verbatim to stdout in text mode and as `{data, size, mime}`, `data` in base64, under `--json`.
+- Added `output::Paginated` (a listing beside its `nextPage` cursor, `null` once complete) and `clap::args::PageTokenArg` (`--page-token`, which takes the cursor back).
+- Added `error::PartialOutcome` and `error::partial_outcome_of`: a command that printed its result but did not fully succeed returns it, and `ErrorReport::eval_coded` exits with its status (2 or above) without printing a failure object. `error::EXIT_FAILURE` and `error::EXIT_PARTIAL` name the statuses.
+- Added `JsonSchemaRegistry::new`, `insert`, `insert_events` and `check`: `new` registers the `completion`, `manual` and `json-schema` outputs, and `check` reports, against the clap command tree, every runnable command without a schema, every key naming no command, a result holding an `event` key, and an event without one. `clap::commands::output_schema` builds a schema with the serialize contract, so a key always printed is required.
 
 ### Changed
+
+- **Breaking:** the failure object always prints `code`, `null` when the chain carries none, and its schema marks it required.
+- **Breaking:** `Printer` requires `event` and `out_bytes`.
+- **Breaking:** `JsonSchemaRegistry` carries an `events` map, and `non_object_roots` returns owned names, event schemas named `<key>.events`.
+- **Breaking:** the `completion`, `manual` and `json-schema` JSON outputs are untagged alternatives with a schema, the single-item shape (`{shell, script}`, `{cmd, page}`, `{cmd, schema}`) or the files written (`{dir, scripts}`, `{dir, pages}`, `{dir, schemas}`).
 
 - `JsonSchemaCommand::execute` takes a `JsonSchemaRegistry` (binary name, version, schemas) instead of a bare map, and stamps each schema with `$id` = `https://pimalaya.org/schemas/<bin>/v<major>/<key>.json` (`v0.<minor>` before 1.0). The contract version is the binary's major version.
 - Piped `--json` output is now newline-delimited: each value is followed by a newline and flushed, so several values printed by one process (a REPL session, a watch) no longer run together.
 - The `terminal` feature now pulls `schemars`.
+
+### Removed
+
+- **Breaking:** removed `printer::Message`. Every output is a described value: a confirmation names what it acted on in a typed receipt, and its sentence is the text form of that data.
 
 ## [0.2.6] - 2026-10-02
 

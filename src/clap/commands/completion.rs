@@ -4,6 +4,7 @@ use anyhow::{Context, Result, bail};
 use clap::{Command, Parser, ValueEnum, value_parser};
 use clap_complete::Shell;
 use log::debug;
+use schemars::JsonSchema;
 use serde::{Serialize, Serializer};
 
 use crate::{clap::parsers::path_parser, printer::Printer};
@@ -53,7 +54,7 @@ impl CompletionCommand {
                 .context("Read generated completion script as UTF-8 error")?;
             debug!("generated {shell} completion script");
 
-            return printer.out(Completion { shell, script });
+            return printer.out(CompletionOutput::Script { shell, script });
         };
 
         let dir = dir.canonicalize().unwrap_or(dir);
@@ -65,55 +66,64 @@ impl CompletionCommand {
             let path = clap_complete::generate_to(shell, &mut command, &cmd_name, &dir)?;
             let path = path.canonicalize().unwrap_or(path);
             debug!("generated {shell} completion script at {}", path.display());
-            scripts.push(Script { shell, path })
+            scripts.push(ScriptFile { shell, path })
         }
 
-        printer.out(Completions { dir, scripts })
+        printer.out(CompletionOutput::Files { dir, scripts })
     }
 }
 
-/// Defines a struct-wrapper to provide a JSON output.
-#[derive(Serialize)]
-struct Completion {
-    #[serde(serialize_with = "serialize_shell")]
-    pub shell: Shell,
-    pub script: String,
+/// What `completion` prints: the one script asked, or the files written.
+#[derive(Serialize, JsonSchema)]
+#[serde(untagged)]
+pub(crate) enum CompletionOutput {
+    /// The one script asked for.
+    Script {
+        /// The shell the script completes.
+        #[serde(serialize_with = "serialize_shell")]
+        #[schemars(with = "String")]
+        shell: Shell,
+        /// The completion script.
+        script: String,
+    },
+    /// The script files written.
+    Files {
+        /// The directory holding the files.
+        dir: PathBuf,
+        /// The files written, one per shell.
+        scripts: Vec<ScriptFile>,
+    },
 }
 
-impl fmt::Display for Completion {
+impl fmt::Display for CompletionOutput {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.script)
-    }
-}
+        match self {
+            Self::Script { script, .. } => f.write_str(script),
+            Self::Files { dir, scripts } => {
+                let n = scripts.len();
+                let p = dir.display();
+                writeln!(f, "{n} completion script(s) successfully generated in {p}:")?;
 
-/// Defines a struct-wrapper to provide a JSON output.
-#[derive(Serialize)]
-struct Completions {
-    dir: PathBuf,
-    scripts: Vec<Script>,
-}
+                for ScriptFile { shell, path } in scripts {
+                    let p = path.display();
+                    writeln!(f, " - {shell} completion script at {p}")?;
+                }
 
-impl fmt::Display for Completions {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let n = self.scripts.len();
-        let p = self.dir.display();
-        writeln!(f, "{n} completion script(s) successfully generated in {p}:")?;
-
-        for Script { shell, path } in &self.scripts {
-            let p = path.display();
-            writeln!(f, " - {shell} completion script at {p}")?;
+                Ok(())
+            }
         }
-
-        Ok(())
     }
 }
 
-/// Defines a struct-wrapper to provide a JSON output.
-#[derive(Serialize)]
-struct Script {
+/// A completion script file written.
+#[derive(Serialize, JsonSchema)]
+pub(crate) struct ScriptFile {
+    /// The shell the script completes.
     #[serde(serialize_with = "serialize_shell")]
-    pub shell: Shell,
-    pub path: PathBuf,
+    #[schemars(with = "String")]
+    shell: Shell,
+    /// The path of the file.
+    path: PathBuf,
 }
 
 pub fn serialize_shell<S: Serializer>(shell: &Shell, s: S) -> Result<S::Ok, S::Error> {
@@ -138,7 +148,11 @@ mod tests {
         let mut printer = TestPrinter::default();
         cmd.execute(&mut printer, Command::new("test")).unwrap();
 
-        assert!(printer.0.starts_with("_test() {"), "{}", printer.0);
+        assert!(
+            printer.output.starts_with("_test() {"),
+            "{}",
+            printer.output
+        );
     }
 
     #[test]

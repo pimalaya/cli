@@ -59,6 +59,17 @@ pub struct JsonFlag {
     pub enabled: bool,
 }
 
+/// The page token argument parser.
+#[derive(Debug, Default, Parser)]
+pub struct PageTokenArg {
+    /// Resume a listing at the given page.
+    ///
+    /// The token is the `nextPage` value a previous listing printed,
+    /// given back as it is.
+    #[arg(long = "page-token", name = "page_token", value_name = "TOKEN")]
+    pub token: Option<String>,
+}
+
 /// The log level flag parser.
 #[derive(Debug, Default, Parser)]
 pub struct LogFlags {

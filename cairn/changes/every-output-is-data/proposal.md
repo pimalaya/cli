@@ -1,7 +1,7 @@
 ---
 cairn: change
 id: every-output-is-data
-status: active
+status: landed
 created: 2026-11-03
 ---
 
@@ -36,7 +36,7 @@ A write answers a receipt naming what it acted on, from one vocabulary:
 
 | Key | Meaning |
 |---|---|
-| `id` | the item as it is after the write: the new id of a creation or a rename, `null` when the write is queued |
+| `id` | the item as it is after the write: the new id of a creation or a rename, `null` when the write is queued or the backend returns none (an IMAP `APPEND` without UIDPLUS); `queued` tells the two apart |
 | `ids` | several items, in the order acted on |
 | `count` | how many items the write matched |
 | `queued` | `true` when the write waits for a sync engine rather than being done; a boolean only, no queue id |
@@ -58,7 +58,10 @@ Every command that prints registers its schema under its command path. A command
 - **Values** a binary defines (statuses, actions, kinds, error codes) are kebab-case. Values a protocol defines keep its spelling (iCalendar `NEEDS-ACTION`, Gmail `labelShow`).
 - **Times**: an instant the binary resolves is RFC 3339 in UTC with `Z`; a timestamp read from content keeps its own offset; a date is `YYYY-MM-DD`; a duration is integer seconds. No epoch numbers in a binary's own types.
 - **Bytes** under `--json` are never written raw to stdout and never decoded lossily. Binary content is `{data, size, mime}`, `data` in base64. vCard and iCalendar text is a string field when it is valid UTF-8, base64 otherwise.
-- **Protocol namespaces are raw-faithful**: a protocol command prints the server's payload as received, not re-serialized through a type that invents `null`s or drops fields, wrapped under a designed collection key. Designed shapes belong to the cross-protocol commands and to what a binary computes itself.
+- **Protocol namespaces are raw-faithful** where the payload is JSON (JMAP, Gmail, Graph, Google APIs): a protocol command prints the server's payload as received, not re-serialized through a type that invents `null`s or drops fields, wrapped under a designed collection key. Designed shapes belong to the cross-protocol commands and to what a binary computes itself.
+- **Structured when understood**: a text protocol (IMAP, SMTP, ManageSieve) or a local store has no payload to copy. A reply the binary parses prints structured; one it cannot parse prints as its text, in an alternative told apart by its keys (`{"event":"unparsed","text":...}` beside `{"event":"untagged","kind":"EXISTS",...}`), never as a field that is an object in one output and a string in another. A store's own spelling stays beside its meaning where both matter (a flag's `{iana, raw}`).
+- **Protocol replies are events**: inside a protocol namespace, responses before the completion are events and the completion is the result, at the granularity the command observes. A typed exchange whose library returns its output whole emits no per-response event; a streamed one (one event per fetched message) or a raw exchange parsed afterwards does.
+- **A protocol refusal is a result**: inside a protocol namespace the server answered, so a refused completion (IMAP `NO`/`BAD`, SMTP 4xx/5xx, ManageSieve `NO`, HTTP 4xx/5xx with the provider's error body) prints as the result and exits 2. Exit 1 means no completion: network, TLS, decoding, local errors. The cross-protocol commands keep coded failures, since they abstract the server away.
 
 ### Shared nouns
 
@@ -98,6 +101,8 @@ The printer gains `event(value)`, writing an event as above, beside `out(value)`
 - **Protocol namespaces are raw-faithful**, cardamum's existing rule, over designed shapes (himalaya Gmail, calendula Google Calendar).
 - **A queue row is `row`**, the name cardamum, calendula and unfog use and the column himalaya's queue view shows.
 - **Text events only on a terminal**, so a redirect never mixes progress into data.
+- **No `raw` field beside parsed replies** (2026-11-03): keeping the received text next to every parsed response would need io-imap, io-smtp and io-managesieve to surface each response's bytes, which is not on the table now. A response is structured when understood and text otherwise.
+- **Events are the base of long jobs**: neverest's sync is expected to report mostly through events, so the event printer and registry are shaped for a command whose output is mainly events.
 
 ## Compatibility
 

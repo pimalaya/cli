@@ -8,6 +8,10 @@
 //! [`ErrorReport::eval_coded`], which prints the code as `code` beside
 //! the message. The message stays for humans and may be reworded at any
 //! time; the code is the contract.
+//!
+//! A command that ran to its end but did not fully succeed prints its
+//! result, then returns a [`PartialOutcome`]: the process exits with its
+//! status, 2 or above, and prints nothing more.
 
 use std::{
     backtrace::{Backtrace, BacktraceStatus},
@@ -60,6 +64,69 @@ impl<C> fmt::Display for CodedError<C> {
 
 impl<C: fmt::Debug> std::error::Error for CodedError<C> {}
 
+/// The exit status of a failed command, which printed the failure
+/// object.
+pub const EXIT_FAILURE: i32 = 1;
+
+/// The exit status of a command that ran to its end and printed its
+/// result, whose outcome is not a full success. A command may document
+/// higher statuses for other such outcomes.
+pub const EXIT_PARTIAL: i32 = 2;
+
+/// The outcome of a command that printed its result but did not fully
+/// succeed, such as a check with a failed backend or a refusal from a
+/// server.
+///
+/// A command returns it as its error once its result is printed:
+/// [`ErrorReport::eval_coded`] then exits with its status without
+/// printing anything more.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PartialOutcome {
+    status: i32,
+}
+
+impl PartialOutcome {
+    /// Builds the outcome exiting with the given status.
+    ///
+    /// # Panics
+    ///
+    /// When the status is below [`EXIT_PARTIAL`], which would read as a
+    /// success or as a failure object.
+    pub fn new(status: i32) -> Self {
+        assert!(
+            status >= EXIT_PARTIAL,
+            "partial outcome status {status} < 2"
+        );
+        Self { status }
+    }
+
+    /// The exit status.
+    pub fn status(&self) -> i32 {
+        self.status
+    }
+}
+
+impl Default for PartialOutcome {
+    fn default() -> Self {
+        Self::new(EXIT_PARTIAL)
+    }
+}
+
+impl fmt::Display for PartialOutcome {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Command ended with exit status {}", self.status)
+    }
+}
+
+impl std::error::Error for PartialOutcome {}
+
+/// The [`PartialOutcome`] in the chain, if any.
+pub fn partial_outcome_of(err: &Error) -> Option<PartialOutcome> {
+    err.chain()
+        .find_map(|cause| cause.downcast_ref::<PartialOutcome>())
+        .copied()
+}
+
 /// The code of the outermost [`CodedError`] in the chain, if any.
 pub fn code_of<C: ErrorCode>(err: &Error) -> Option<C> {
     err.chain()
@@ -85,12 +152,19 @@ impl ErrorReport {
 impl<C: ErrorCode> ErrorReport<C> {
     /// Unwraps a result, or prints the error to the printer, with the
     /// code of the chain when it carries one, and exits with status 1.
+    ///
+    /// A [`PartialOutcome`] in the chain means the result is already
+    /// printed: the process exits with its status, printing nothing more.
     pub fn eval_coded<T>(printer: &mut impl Printer, result: Result<T, Error>) -> T {
         match result {
             Ok(res) => res,
             Err(err) => {
+                if let Some(outcome) = partial_outcome_of(&err) {
+                    process::exit(outcome.status());
+                }
+
                 let _ = printer.out(Self::from(err));
-                process::exit(1);
+                process::exit(EXIT_FAILURE);
             }
         }
     }
@@ -190,8 +264,8 @@ impl<C: ErrorCode> JsonSchema for ErrorReport<C> {
 #[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct ErrorReportOutput<C> {
-    /// The stable code of the failure, when the binary gave it one.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    /// The stable code of the failure, `null` when the binary gave it
+    /// none.
     code: Option<C>,
     /// The outermost error message.
     error: String,
@@ -203,8 +277,8 @@ struct ErrorReportOutput<C> {
 
 #[cfg(test)]
 mod tests {
+    use crate::clap::commands::output_schema;
     use anyhow::{Context, anyhow};
-    use schemars::schema_for;
     use serde::Serialize;
     use serde_json::json;
 
@@ -236,23 +310,36 @@ mod tests {
     }
 
     #[test]
-    fn an_uncoded_error_prints_no_code() {
+    fn an_uncoded_error_prints_a_null_code() {
         let err = anyhow!("boom").context("Read message 3");
         let json = serde_json::to_value(ErrorReport::<TestCode>::from(err)).unwrap();
 
         assert_eq!(
             json,
-            json!({ "error": "Read message 3", "sources": ["boom"], "backtrace": null })
+            json!({ "code": null, "error": "Read message 3", "sources": ["boom"], "backtrace": null })
         );
     }
 
     #[test]
     fn the_schema_types_the_code_by_the_vocabulary() {
-        let schema = serde_json::to_value(schema_for!(ErrorReport<TestCode>)).unwrap();
+        let schema = output_schema::<ErrorReport<TestCode>>();
         let required = schema["required"].as_array().unwrap();
 
-        assert!(!required.contains(&json!("code")), "{schema}");
+        assert!(required.contains(&json!("code")), "{schema}");
         assert!(required.contains(&json!("error")), "{schema}");
         assert_eq!(schema["$defs"]["TestCode"]["enum"], json!(["body-pending"]));
+    }
+
+    #[test]
+    fn a_partial_outcome_keeps_its_status_under_context() {
+        let err = Error::from(PartialOutcome::new(3)).context("Check account");
+        assert_eq!(partial_outcome_of(&err).map(|o| o.status()), Some(3));
+        assert_eq!(partial_outcome_of(&anyhow!("boom")), None);
+    }
+
+    #[test]
+    #[should_panic]
+    fn a_partial_outcome_cannot_read_as_a_failure() {
+        PartialOutcome::new(1);
     }
 }

@@ -4,6 +4,7 @@ use anyhow::{Context, Result, bail};
 use clap::{Command, Parser};
 use clap_mangen::Man;
 use log::debug;
+use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::{clap::parsers::path_parser, printer::Printer};
@@ -68,7 +69,7 @@ impl ManualCommand {
                 String::from_utf8(page).context("Read generated manual page as UTF-8 error")?;
             debug!("generated {cmd} manual page");
 
-            return printer.out(Manual { cmd, page });
+            return printer.out(ManualOutput::Page { cmd, page });
         };
 
         let dir = dir.canonicalize().unwrap_or(dir);
@@ -83,53 +84,60 @@ impl ManualCommand {
             let path = dir.join(format!("{cmd}.1"));
             fs::write(&path, page)?;
             debug!("generated {cmd} manual page at {}", path.display());
-            pages.push(Page { cmd, path })
+            pages.push(PageFile { cmd, path })
         }
 
-        printer.out(Manuals { dir, pages })
+        printer.out(ManualOutput::Files { dir, pages })
     }
 }
 
-/// Defines a struct-wrapper to provide a JSON output.
-#[derive(Serialize)]
-struct Manual {
-    pub cmd: String,
-    pub page: String,
+/// What `manual` prints: the one page asked, or the files written.
+#[derive(Serialize, JsonSchema)]
+#[serde(untagged)]
+pub(crate) enum ManualOutput {
+    /// The one page asked for.
+    Page {
+        /// The page name.
+        cmd: String,
+        /// The manual page, in roff.
+        page: String,
+    },
+    /// The page files written.
+    Files {
+        /// The directory holding the files.
+        dir: PathBuf,
+        /// The files written, one per command.
+        pages: Vec<PageFile>,
+    },
 }
 
-impl fmt::Display for Manual {
+impl fmt::Display for ManualOutput {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.page)
-    }
-}
+        match self {
+            Self::Page { page, .. } => f.write_str(page),
+            Self::Files { dir, pages } => {
+                let n = pages.len();
+                let p = dir.display();
+                writeln!(f, "{n} manual page(s) successfully generated in {p}:")?;
 
-/// Defines a struct-wrapper to provide a JSON output.
-#[derive(Serialize)]
-struct Manuals {
-    dir: PathBuf,
-    pages: Vec<Page>,
-}
+                for PageFile { cmd, path } in pages {
+                    let p = path.display();
+                    writeln!(f, " - {cmd} manual page at {p}")?;
+                }
 
-impl fmt::Display for Manuals {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let n = self.pages.len();
-        let p = self.dir.display();
-        writeln!(f, "{n} manual page(s) successfully generated in {p}:")?;
-
-        for Page { cmd, path } in &self.pages {
-            let p = path.display();
-            writeln!(f, " - {cmd} manual page at {p}")?;
+                Ok(())
+            }
         }
-
-        Ok(())
     }
 }
 
-/// Defines a struct-wrapper to provide a JSON output.
-#[derive(Serialize)]
-struct Page {
-    pub cmd: String,
-    pub path: PathBuf,
+/// A manual page file written.
+#[derive(Serialize, JsonSchema)]
+pub(crate) struct PageFile {
+    /// The page name.
+    cmd: String,
+    /// The path of the file.
+    path: PathBuf,
 }
 
 #[cfg(test)]
@@ -150,7 +158,7 @@ mod tests {
         let command = Command::new("test").subcommand(Command::new("sub"));
         cmd.execute(&mut printer, command).unwrap();
 
-        assert!(printer.0.contains(".TH sub 1"), "{}", printer.0);
+        assert!(printer.output.contains(".TH sub 1"), "{}", printer.output);
     }
 
     #[test]

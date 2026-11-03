@@ -9,10 +9,10 @@ change: every-output-is-data
 Every value a command prints SHALL be a named type implementing `Serialize` and `JsonSchema`, its `Display` writing the text form. pimalaya-cli SHALL provide no message wrapper. No field SHALL carry prose the binary composed; text a server or a file provides is data and SHALL travel as a string field.
 
 ### Requirement: A write answers a receipt
-A command that writes SHALL print what it acted on, using these keys for these meanings: `id` (the item as it is after the write, `null` when queued), `ids` (several items, in the order acted on), `count` (how many items matched), `queued` (`true` when a sync engine applies the write later; no queue id), `response` (a protocol reply as sent), `warnings` (warnings attached to an accepted write), `path` (a file written). A receipt SHALL NOT be a generic map of fields. An action with nothing created or changed SHALL still name its target.
+A command that writes SHALL print what it acted on, using these keys for these meanings: `id` (the item as it is after the write, `null` when queued or when the backend returns none), `ids` (several items, in the order acted on), `count` (how many items matched), `queued` (`true` when a sync engine applies the write later; no queue id), `response` (a protocol reply as sent), `warnings` (warnings attached to an accepted write), `path` (a file written). A receipt SHALL NOT be a generic map of fields. An action with nothing created or changed SHALL still name its target.
 
 ### Requirement: One command, one schema
-Every command that prints SHALL register its schema under its command path. A command whose result varies SHALL print one type whose alternatives are told apart by their keys. pimalaya-cli SHALL provide a check over the clap command tree reporting every leaf without a key that the binary does not declare silent, and every key naming no leaf. The `completion`, `manual` and `json-schema` outputs SHALL be registered.
+Every command that prints SHALL register its schema under its command path. A command whose result varies SHALL print one type whose alternatives are told apart by their keys. pimalaya-cli SHALL provide a check over the clap command tree reporting every runnable command (a leaf, or a command whose subcommand is optional) without a key that the binary does not declare silent, and every key naming no runnable command, the failure object's `<bin>-error` aside. The `completion`, `manual` and `json-schema` outputs SHALL be registered by the registry itself, at the root of the command tree. Schemas SHALL describe a value as printed (the serialize contract), so a key the type always prints is required, `null` or not.
 
 #### Scenario: A command printing data without a schema
 - GIVEN a leaf whose output type is not in the registry and that is not declared silent
@@ -35,16 +35,30 @@ Values a binary defines SHALL be kebab-case; values a protocol defines SHALL kee
 With JSON output, a command SHALL NOT write raw bytes to stdout and SHALL NOT decode bytes lossily. Binary content SHALL be `{data, size, mime}`, `data` in base64. vCard and iCalendar text SHALL be a string when it is valid UTF-8, base64 otherwise.
 
 ### Requirement: Protocol commands are raw-faithful
-A command of a protocol namespace SHALL print the server's payload as received, under a designed collection key when it lists, without re-serializing it through a type that adds or drops fields.
+A command of a protocol namespace whose payload is JSON SHALL print the server's payload as received, under a designed collection key when it lists, without re-serializing it through a type that adds or drops fields.
+
+### Requirement: Structured when understood
+A reply of a text protocol, or a value of a local store, SHALL print as a structured value when the binary parses it, and as its text otherwise, in an alternative told apart from the structured ones by its keys. No field SHALL hold a structured value in one output and a string in another.
+
+#### Scenario: A response the binary cannot parse
+- GIVEN a raw IMAP exchange whose reply holds a response imap-codec cannot decode
+- WHEN the command prints it under `--json`
+- THEN that response prints as an object holding its text, its keys distinct from those of a parsed response, and the other responses print parsed
+
+### Requirement: Protocol replies are events
+Inside a protocol namespace, a response the server sends before a command's completion SHALL be an event, and the completion SHALL be the result. A command SHALL emit events at the granularity it observes; a binary SHALL NOT be required to observe each response of a typed exchange.
+
+### Requirement: A protocol refusal is a result
+Inside a protocol namespace, a completion the server refuses (an IMAP `NO` or `BAD`, an SMTP 4xx or 5xx reply, a ManageSieve `NO`, an HTTP 4xx or 5xx carrying the provider's error body) SHALL print as the result and exit 2. A command that gets no completion (a network, TLS or decoding failure, a local error) SHALL print the failure object and exit 1. Outside protocol namespaces, a refusal SHALL be a coded failure.
 
 ### Requirement: Shared nouns keep one shape
 Every binary SHALL print an account row as `{name, default, backends}`, a backend check row as `{backend, ok, code, error}`, the wizard's output as `{name, default, document}`, a collection row as `{id, name, description, color, default}`, a queued action's row id as `row`, and an address as `{name, email}`.
 
 ### Requirement: A partial outcome prints its result
-A command that ran to its end with an outcome that is not a full success SHALL print its result and exit with a code of 2 or above, whose meaning the command documents. A `check` with a failed backend SHALL print every row and exit 2.
+A command that ran to its end with an outcome that is not a full success SHALL print its result and exit with a code of 2 or above, whose meaning the command documents. A `check` with a failed backend SHALL print every row and exit 2. pimalaya-cli SHALL provide a marker error a command returns once its result is printed, which the error report turns into the exit status without printing anything more.
 
 ### Requirement: Events precede the result
-A command MAY print events before its result. An event SHALL be an object whose root carries `event`, a kebab-case name; a result SHALL NOT carry `event` at its root. The last line SHALL be the failure object when the exit code is 1 and the result otherwise; a command printing only events has no result. A failed item SHALL be an event field, never a failure object. With JSON output, each event SHALL be one flushed line; in text mode, events SHALL be written to stdout only when it is a terminal.
+A command MAY print events before its result, each as soon as the command observes what it reports. An event SHALL be an object whose root carries `event`, a kebab-case name; a result SHALL NOT carry `event` at its root. The last line SHALL be the failure object when the exit code is 1 and the result otherwise; a command printing only events has no result. A failed item SHALL be an event field, never a failure object. With JSON output, each event SHALL be one flushed line; in text mode, events SHALL be written to stdout only when it is a terminal.
 
 #### Scenario: A sync piped to a script
 - GIVEN a command registering events
