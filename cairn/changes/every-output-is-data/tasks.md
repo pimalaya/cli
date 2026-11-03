@@ -26,7 +26,7 @@ change: every-output-is-data
 - [ ] calendula: `item list` contents printed as numbers, agenda root keyed by data, `calendar create` id in prose, `""` for absent, `queued` meaning a row, `account check`
 - [ ] journal: create id in prose, `entry build -o` off its schema, `""` for absent, `displayName`, `account check` exit
 - [ ] unfog: `queued` and `parked` each with two types, `place` prose, `task` vs `uid`, untagged error codes, `account check` exit
-- [ ] neverest: `mode` prose, `null` vs omitted, sync progress as events
+- [x] neverest: `mode` prose, `null` vs omitted, sync progress as events, `check` printing every endpoint and exiting 2 (neverest changes sync-progress-is-events, every-key-is-printed, a-check-reports-every-endpoint)
 - [ ] pimdir CLI: codes dropped, second failure shape, camelCase values, `queue status` unregistered, `next`/`nextOffset` paging
 - [ ] ortie: data in prose, `auth get` shapes, epoch times, REPL help under `--json`
 - [ ] comodoro: PascalCase values and `{"Fixed": n}`, epoch times, `watch` as events

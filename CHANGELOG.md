@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- Changed the base64 encoding of `output::Bytes` from base64 to base64-codec.
+
+  It runs on the CPU token the binary installs with `simd_cpu::SimdCpu::install_detected`, the portable baseline when none is.
+
+- Raised the minimum supported Rust version from 1.88 to 1.89.
+
 ## [0.3.0] - 2026-11-03
 
 ### Added

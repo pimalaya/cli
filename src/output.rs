@@ -9,12 +9,12 @@
 
 use std::{borrow::Cow, fmt};
 
-use base64::{Engine, engine::general_purpose::STANDARD};
+use base64_codec::codec::Base64Codec;
 use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::{Serialize, Serializer, ser::SerializeStruct};
 
 /// Binary content, printed as `{data, size, mime}` with `data` in
-/// base64.
+/// base64, encoded on the CPU token the binary installed (simd-cpu).
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Bytes {
     /// The content.
@@ -32,8 +32,13 @@ impl fmt::Display for Bytes {
 
 impl Serialize for Bytes {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut data = Vec::new();
+        Base64Codec::default().encode_vec(&self.data, &mut data);
+        // NOTE: the base64 alphabet is ASCII, so this never falls back.
+        let data = String::from_utf8(data).unwrap_or_default();
+
         let mut bytes = serializer.serialize_struct("Bytes", 3)?;
-        bytes.serialize_field("data", &STANDARD.encode(&self.data))?;
+        bytes.serialize_field("data", &data)?;
         bytes.serialize_field("size", &self.data.len())?;
         bytes.serialize_field("mime", &self.mime)?;
         bytes.end()
