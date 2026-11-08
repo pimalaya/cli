@@ -6,6 +6,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Added `wizard::keyring::KeyringProvider::store`, storing a secret through the provider's CLI.
+
+  The secret goes on the program's stdin, never on its arguments.
+
+- Added `wizard::keyring::prompt_password`, asking once for a password after naming the endpoints it goes to.
+
+  The line of an endpoint outside the address's domain says so.
+
+- Added `wizard::keyring::prompt_store`, storing a tested password in an installed keyring and reading it back.
+
+  A keyring failing either step is reported and dropped from the list, which also offers a custom command and the raw value.
+
+- Added `wizard::review::prompt`, listing a wizard's picks and asking whether to continue or which one to change.
+- Added `wizard::review::ReviewRow`, a row of the review.
+- Added `wizard::review::ReviewAction`, the answer to the review.
+- Added `wizard::ortie::sign_in`, handing an OAuth 2.0 sign-in off to Ortie.
+
+  Ortie's output goes to stderr, so a redirected stdout keeps only what the caller prints.
+
+- Added `wizard::ortie::OrtieSignInError`.
+
 ## [0.3.1] - 2026-11-03
 
 ### Changed

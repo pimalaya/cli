@@ -10,9 +10,11 @@
 //!
 //! A known provider or broker yields an argv command (no shell), so the
 //! config serializes it as a TOML array; only a custom command falls
-//! back to a shell string. The picker never *writes* the secret: it just
-//! records the read command, leaving the value for the user to store
-//! under the chosen entry beforehand.
+//! back to a shell string. [`prompt_secret`] and [`prompt_token`] only
+//! record the read command, leaving the value for the user to store
+//! under the chosen entry beforehand. [`prompt_password`] asks for the
+//! password once and [`prompt_store`] stores it after the caller tested
+//! it, reading it back before answering the read command.
 //!
 //! Both lists are ordered by what the running system can actually do:
 //! the entries whose CLI is found on the `PATH` lead, the rest follow
@@ -21,9 +23,15 @@
 //! either way.
 
 use core::fmt;
-use std::{env, ffi::OsStr, path::Path};
+use std::{
+    env,
+    ffi::OsStr,
+    io::{self, Write},
+    path::Path,
+    process::{Command, ExitStatus, Stdio},
+};
 
-use secrecy::SecretString;
+use secrecy::{ExposeSecret, SecretSlice, SecretString};
 
 use crate::prompt::{self, PromptResult};
 
@@ -161,6 +169,74 @@ impl KeyringProvider {
             Self::Pass => format!("pass insert -m -f {}", path(service, key)),
         }
     }
+
+    /// Stores `secret` at `key`, the entry `read_command(None, key)` reads,
+    /// writing it on the program's stdin and never on its arguments.
+    pub fn store(self, key: &str, secret: &SecretString) -> io::Result<()> {
+        let line = match self {
+            Self::Security => Some(security_line(key, secret)?),
+            _ => None,
+        };
+
+        let input = line.as_ref().unwrap_or(secret);
+        let argv = self.store_command(key);
+
+        let mut child = Command::new(&argv[0])
+            .args(&argv[1..])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .stderr(Stdio::piped())
+            .spawn()?;
+
+        // NOTE: a broken pipe says less than the program's stderr.
+        let written = match child.stdin.take() {
+            Some(mut stdin) => stdin.write_all(input.expose_secret().as_bytes()),
+            None => Ok(()),
+        };
+
+        let output = child.wait_with_output()?;
+
+        if !output.status.success() {
+            return Err(failure(&argv[0], &output.stderr, output.status));
+        }
+
+        written
+    }
+
+    /// The argv storing the entry at `key`, the secret going on its stdin.
+    fn store_command(self, key: &str) -> Vec<String> {
+        match self {
+            Self::SecretTool => argv(["secret-tool", "store", "--label", key, "account", key]),
+            Self::KwalletQuery => argv(["kwallet-query", "-w", key, "kdewallet"]),
+            Self::Security => argv(["security", "-i"]),
+            Self::Pass => argv(["pass", "insert", "-m", "-f", key]),
+        }
+    }
+
+    /// Reads the entry at `key` back, failing unless it holds `secret`.
+    fn read_back(self, key: &str, secret: &SecretString) -> io::Result<()> {
+        let argv = self.read_command(None, key);
+
+        let output = Command::new(&argv[0])
+            .args(&argv[1..])
+            .stdin(Stdio::null())
+            .output()?;
+
+        let stdout = SecretSlice::from(output.stdout);
+
+        if !output.status.success() {
+            return Err(failure(&argv[0], &output.stderr, output.status));
+        }
+
+        let stored = stdout.expose_secret();
+        let stored = stored.strip_suffix(b"\n").unwrap_or(stored);
+
+        if stored != secret.expose_secret().as_bytes() {
+            return Err(io::Error::other("Entry read back does not match"));
+        }
+
+        Ok(())
+    }
 }
 
 /// A well-known OAuth 2.0 token broker: an external CLI that owns the
@@ -291,6 +367,88 @@ fn path(service: Option<&str>, key: &str) -> String {
     }
 }
 
+/// The `security -i` line storing `secret` at `key`, its values quoted.
+///
+/// A line break would start another command, so one is refused.
+fn security_line(key: &str, secret: &SecretString) -> io::Result<SecretString> {
+    let secret = secret.expose_secret();
+
+    if key.contains(['\n', '\r']) || secret.contains(['\n', '\r']) {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "Cannot store a key or a secret holding a line break",
+        ));
+    }
+
+    // NOTE: sized up front, so no reallocation leaves a copy of the secret.
+    let mut line = String::with_capacity(64 + 4 * key.len() + 2 * secret.len());
+
+    line.push_str("add-generic-password -U -s ");
+    push_quoted(&mut line, key);
+    line.push_str(" -a ");
+    push_quoted(&mut line, key);
+    line.push_str(" -w ");
+    push_quoted(&mut line, secret);
+    line.push('\n');
+
+    Ok(line.into())
+}
+
+/// Appends `value` to `line` double-quoted, `"` and `\` escaped.
+fn push_quoted(line: &mut String, value: &str) {
+    line.push('"');
+
+    for c in value.chars() {
+        if matches!(c, '"' | '\\') {
+            line.push('\\');
+        }
+
+        line.push(c);
+    }
+
+    line.push('"');
+}
+
+/// The error of `program` exiting with `status`, from its stderr text.
+fn failure(program: &str, stderr: &[u8], status: ExitStatus) -> io::Error {
+    let stderr = String::from_utf8_lossy(stderr);
+    let stderr = stderr.split_whitespace().collect::<Vec<_>>().join(" ");
+
+    if stderr.is_empty() {
+        return io::Error::other(format!("{program} failed, {status}"));
+    }
+
+    io::Error::other(stderr)
+}
+
+/// Whether the host of `endpoint` is neither `domain` nor a subdomain of it.
+///
+/// The userinfo before the host ends at the last `@`, as in a URL.
+fn off_domain(endpoint: &str, domain: &str) -> bool {
+    let rest = match endpoint.split_once("://") {
+        Some((_, rest)) => rest,
+        None => endpoint,
+    };
+
+    let end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
+    let authority = &rest[..end];
+
+    let authority = match authority.rsplit_once('@') {
+        Some((_, authority)) => authority,
+        None => authority,
+    };
+
+    let host = match authority.strip_prefix('[') {
+        Some(ipv6) => ipv6.split(']').next().unwrap_or_default(),
+        None => authority.split(':').next().unwrap_or_default(),
+    };
+
+    let host = host.trim_end_matches('.').to_lowercase();
+    let domain = domain.trim_end_matches('.').to_lowercase();
+
+    host != domain && !host.ends_with(&format!(".{domain}"))
+}
+
 /// A secret collected by the picker.
 ///
 /// A known provider or broker yields an argv [`Command`](Self::Command)
@@ -355,6 +513,24 @@ fn label(name: &str, installed: bool) -> String {
     format!("{name}, not found on PATH")
 }
 
+/// One entry in the store pick list of [`prompt_store`].
+#[derive(Eq, PartialEq)]
+enum Storage {
+    Keyring(KeyringProvider),
+    Custom,
+    Raw,
+}
+
+impl fmt::Display for Storage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Keyring(provider) => write!(f, "Store it in {}", provider.name()),
+            Self::Custom => f.write_str("Custom shell command printing it"),
+            Self::Raw => f.write_str("Raw in the configuration (plaintext, NOT recommended)"),
+        }
+    }
+}
+
 /// Prompts for a password: a pick list of the OS keyring providers, then
 /// a custom command, then a raw value. The providers whose CLI is found
 /// on the `PATH` lead the list, the rest saying they are missing.
@@ -393,6 +569,63 @@ pub fn prompt_token(label: &str, key_default: &str, oauth: bool) -> PromptResult
     choices.push(Choice::Raw);
 
     prompt_choice(label, key_default, choices)
+}
+
+/// Prompts once for a masked password, after naming on stderr each of the
+/// `endpoints` it goes to and whether one is off the address's `domain`.
+pub fn prompt_password(
+    label: &str,
+    endpoints: &[&str],
+    domain: Option<&str>,
+) -> PromptResult<SecretString> {
+    for endpoint in endpoints {
+        match domain {
+            Some(domain) if off_domain(endpoint, domain) => {
+                eprintln!("Your password goes to {endpoint}, not on {domain}")
+            }
+            _ => eprintln!("Your password goes to {endpoint}"),
+        }
+    }
+
+    let password = prompt::secret(format!("{label}:"))?;
+
+    Ok(password.into())
+}
+
+/// Prompts where to keep a tested secret: an installed keyring, storing it
+/// at `key` and reading it back, a custom command, or the raw value.
+pub fn prompt_store(label: &str, key: &str, secret: &SecretString) -> PromptResult<SecretChoice> {
+    let mut providers: Vec<_> = KeyringProvider::available()
+        .into_iter()
+        .filter(|provider| provider.installed())
+        .collect();
+
+    loop {
+        let mut choices: Vec<_> = providers.iter().copied().map(Storage::Keyring).collect();
+        choices.push(Storage::Custom);
+        choices.push(Storage::Raw);
+
+        match prompt::item(format!("{label} storage:"), choices, None)? {
+            Storage::Keyring(provider) => {
+                let stored = provider
+                    .store(key, secret)
+                    .and_then(|()| provider.read_back(key, secret));
+
+                match stored {
+                    Ok(()) => return Ok(SecretChoice::Command(provider.read_command(None, key))),
+                    Err(err) => {
+                        eprintln!("Cannot store {label} in {}: {err}", provider.name());
+                        providers.retain(|other| *other != provider);
+                    }
+                }
+            }
+            Storage::Custom => {
+                let command = prompt::text(format!("{label} shell command:"), None::<String>)?;
+                return Ok(SecretChoice::Shell(command));
+            }
+            Storage::Raw => return Ok(SecretChoice::Raw(secret.clone())),
+        }
+    }
 }
 
 /// The keyring providers as pick-list entries, in the order
@@ -633,5 +866,80 @@ mod tests {
     #[test]
     fn an_empty_command_is_not_installed() {
         assert!(!installed(&[]));
+    }
+
+    #[test]
+    fn a_store_command_writes_the_entry_its_read_command_reads() {
+        let key = "acme-imap";
+
+        assert_eq!(
+            KeyringProvider::SecretTool.store_command(key),
+            [
+                "secret-tool",
+                "store",
+                "--label",
+                "acme-imap",
+                "account",
+                "acme-imap"
+            ],
+        );
+        assert_eq!(
+            KeyringProvider::KwalletQuery.store_command(key),
+            ["kwallet-query", "-w", "acme-imap", "kdewallet"],
+        );
+        assert_eq!(
+            KeyringProvider::Pass.store_command(key),
+            ["pass", "insert", "-m", "-f", "acme-imap"],
+        );
+
+        // The keychain takes its command line, secret included, on stdin.
+        assert_eq!(
+            KeyringProvider::Security.store_command(key),
+            ["security", "-i"]
+        );
+    }
+
+    #[test]
+    fn a_keychain_line_quotes_and_escapes_its_values() {
+        let line = security_line("acme \"imap\"", &SecretString::from(r#"a"b\c d"#))
+            .expect("build the line");
+
+        assert_eq!(
+            line.expose_secret(),
+            "add-generic-password -U -s \"acme \\\"imap\\\"\" -a \"acme \\\"imap\\\"\" \
+             -w \"a\\\"b\\\\c d\"\n",
+        );
+    }
+
+    #[test]
+    fn a_keychain_line_refuses_a_line_break() {
+        let secret = SecretString::from("a\nadd-generic-password");
+        let err = security_line("acme", &secret).expect_err("refuse the secret");
+        assert_eq!(err.kind(), io::ErrorKind::InvalidInput);
+
+        let secret = SecretString::from("abc");
+        let err = security_line("acme\r", &secret).expect_err("refuse the key");
+        assert_eq!(err.kind(), io::ErrorKind::InvalidInput);
+    }
+
+    #[test]
+    fn an_endpoint_is_on_its_domain_and_subdomains_only() {
+        let domain = "example.org";
+
+        assert!(!off_domain("imaps://imap.example.org:993", domain));
+        assert!(!off_domain("https://example.org/jmap", domain));
+        assert!(!off_domain("imaps://IMAP.Example.ORG:993", domain));
+        assert!(!off_domain("smtp://mail.example.org.:587", "Example.org"));
+        assert!(!off_domain("imap.example.org:143", domain));
+
+        assert!(off_domain("imaps://imap.example.net:993", domain));
+        assert!(off_domain("https://example.org.example.net/", domain));
+        assert!(off_domain("https://notexample.org", domain));
+        assert!(off_domain(
+            "imaps://imap.example.org@example.net:993",
+            domain
+        ));
+        assert!(off_domain("https://[2001:db8::1]:443/example.org", domain));
+        assert!(off_domain("https://example.net?example.org", domain));
     }
 }
