@@ -421,6 +421,20 @@ fn failure(program: &str, stderr: &[u8], status: ExitStatus) -> io::Error {
     io::Error::other(stderr)
 }
 
+/// The `label` of a prompt as a noun in a sentence: `Password` reads
+/// `password`, an initialism such as `API token` stays as written.
+fn noun(label: &str) -> String {
+    let mut chars = label.chars();
+
+    match (chars.next(), chars.next()) {
+        (Some(first), Some(second)) if second.is_lowercase() => first
+            .to_lowercase()
+            .chain(label[first.len_utf8()..].chars())
+            .collect(),
+        _ => label.to_string(),
+    }
+}
+
 /// Whether the host of `endpoint` is neither `domain` nor a subdomain of it.
 ///
 /// The userinfo before the host ends at the last `@`, as in a URL.
@@ -571,19 +585,21 @@ pub fn prompt_token(label: &str, key_default: &str, oauth: bool) -> PromptResult
     prompt_choice(label, key_default, choices)
 }
 
-/// Prompts once for a masked password, after naming on stderr each of the
+/// Prompts once for a masked secret, after naming on stderr each of the
 /// `endpoints` it goes to and whether one is off the address's `domain`.
 pub fn prompt_password(
     label: &str,
     endpoints: &[&str],
     domain: Option<&str>,
 ) -> PromptResult<SecretString> {
+    let noun = noun(label);
+
     for endpoint in endpoints {
         match domain {
             Some(domain) if off_domain(endpoint, domain) => {
-                eprintln!("Your password goes to {endpoint}, not on {domain}")
+                eprintln!("Your {noun} goes to {endpoint}, not on {domain}")
             }
-            _ => eprintln!("Your password goes to {endpoint}"),
+            _ => eprintln!("Your {noun} goes to {endpoint}"),
         }
     }
 
@@ -941,5 +957,13 @@ mod tests {
         ));
         assert!(off_domain("https://[2001:db8::1]:443/example.org", domain));
         assert!(off_domain("https://example.net?example.org", domain));
+    }
+
+    #[test]
+    fn a_label_reads_as_a_noun_its_initialisms_kept() {
+        assert_eq!(noun("Password"), "password");
+        assert_eq!(noun("SMTP password"), "SMTP password");
+        assert_eq!(noun("API token"), "API token");
+        assert_eq!(noun("P"), "P");
     }
 }

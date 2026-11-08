@@ -22,7 +22,7 @@ The account wizards of the Pimalaya CLIs share their secret, OAuth and review st
 - THEN `security -i` runs with no secret in its arguments, and its stdin holds one `add-generic-password` line with the password double-quoted, each `"` and `\` escaped by a backslash
 
 ### Requirement: The user sees where a password goes
-`keyring::prompt_password` SHALL print on stderr, before asking, one line per endpoint the password goes to. When the address's domain is given and an endpoint's host is neither that domain nor one of its subdomains, compared case-insensitively, the line SHALL say the endpoint is not on that domain. A host is read from `scheme://[userinfo@]host[:port][/path]`, the userinfo ending at the last `@`.
+`keyring::prompt_password` SHALL print on stderr, before asking, one line per endpoint the secret goes to, naming it after the prompt's label (`Password` reads `Your password`, an initialism such as `API token` stays as written). When the address's domain is given and an endpoint's host is neither that domain nor one of its subdomains, compared case-insensitively, the line SHALL say the endpoint is not on that domain. A host is read from `scheme://[userinfo@]host[:port][/path]`, the userinfo ending at the last `@`.
 
 #### Scenario: Mail hosted elsewhere
 - GIVEN the domain `example.org` and the endpoint `imaps://imap.example.net:993`
