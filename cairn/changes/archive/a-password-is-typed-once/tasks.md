@@ -15,4 +15,4 @@ change: a-password-is-typed-once
 - [x] CHANGELOG under [Unreleased]
 - [x] Fold delta.md into cairn/spec/wizard.md; log; status `landed`; archive
 - [ ] Verify against the real programs (never run on this machine): the four store commands, `security -i` quoting and exit status on macOS, the Windows stderr duplicate
-- [ ] Left to each CLI's own change: himalaya, cardamum, calendula, neverest adopt the new prompts
+- [x] Left to each CLI's own change: himalaya, cardamum, calendula, neverest adopt the new prompts (2026-11-08)
