@@ -43,6 +43,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
   A binary built with `terminal` alone links 10 fewer crates (anstream, anstyle-parse, anstyle-query, bitflags, colorchoice, is_terminal_polyfill, linux-raw-sys, rustix, terminal_size, utf8parse), and one built with `build` alone drops toml_writer.
 
+- Changed `clap::parsers::path_parser` to take the home directory from dirs 7, dropping shellexpand's `tilde` feature, which pinned dirs below 7.
+
+  A binary already on dirs 7 no longer carries dirs 6 beside it. `~` and variable expansion are unchanged.
+
+- Changed `build::git_envs` to run the git command in place of git2, so the `build` feature compiles no C.
+
+  `GIT_DESCRIBE` comes from `git describe --all --always` and `GIT_REV` from `git rev-parse HEAD`, run on the repository whose .git sits in the build script's working directory, never a parent's. A build script using `build` alone links 11 fewer crates (bitflags, cc, find-msvc-tools, git2, jobserver, libc, libgit2-sys, libz-sys, pkg-config, shlex, vcpkg).
+
+### Fixed
+
+- Fixed `build::git_envs` panicking in a repository it cannot describe, such as one without commits: `GIT_DESCRIBE` and `GIT_REV` are `unknown` there, as outside a repository or without git.
+
 ## [0.3.1] - 2026-11-03
 
 ### Changed

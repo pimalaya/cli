@@ -7,9 +7,9 @@
 use std::{
     collections::BTreeMap,
     env::{self, VarError},
+    process::Command,
 };
 
-use git2::{DescribeOptions, Repository};
 use serde::Deserialize;
 
 /// Builds the `CARGO_FEATURES` environment variable.
@@ -66,42 +66,33 @@ pub fn target_envs() {
 
 /// Builds environment variables related to git.
 ///
-/// This function basically tries to forward existing git environment
-/// variables. In case of failure, it tries to build them using
-/// [`git2`].
+/// This function forwards `GIT_DESCRIBE` and `GIT_REV` when they are
+/// set, else builds them with the git command, or `unknown` if it fails.
 pub fn git_envs() {
-    let git = Repository::open(".").ok();
-
     if try_forward_env("GIT_DESCRIBE").is_err() {
-        let description = match &git {
-            None => String::from("unknown"),
-            Some(git) => {
-                let mut opts = DescribeOptions::new();
-                opts.describe_all();
-                opts.show_commit_oid_as_fallback(true);
-
-                git.describe(&opts)
-                    .expect("should describe git object")
-                    .format(None)
-                    .expect("should format git object description")
-            }
-        };
-
+        let description = git(&["describe", "--all", "--always"]);
         println!("cargo::rustc-env=GIT_DESCRIBE={description}");
-    };
+    }
 
     if try_forward_env("GIT_REV").is_err() {
-        let rev = match &git {
-            None => String::from("unknown"),
-            Some(git) => {
-                let head = git.head().expect("should get git HEAD");
-                let commit = head.peel_to_commit().expect("should get git HEAD commit");
-                commit.id().to_string()
-            }
-        };
-
+        let rev = git(&["rev-parse", "HEAD"]);
         println!("cargo::rustc-env=GIT_REV={rev}");
-    };
+    }
+}
+
+/// Runs git on the working directory's repository, never a parent's.
+fn git(args: &[&str]) -> String {
+    let output = Command::new("git")
+        .arg("--git-dir=.git")
+        .args(args)
+        .output();
+
+    match output {
+        Ok(output) if output.status.success() => {
+            String::from_utf8_lossy(&output.stdout).trim().to_owned()
+        }
+        _ => String::from("unknown"),
+    }
 }
 
 /// Tries to forward the given environment variable.
