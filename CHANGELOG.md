@@ -29,6 +29,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Added `wizard::ortie::OrtieSignInError`.
 
+### Changed
+
+- Changed the `terminal` feature to stop enabling env_logger's `auto-color` feature, so log lines carry no colour.
+
+  A binary wanting coloured logs enables env_logger's `auto-color` feature itself.
+
+- Changed the `terminal` feature to enable clap's `help` feature in place of `wrap_help`, so help no longer asks the terminal for its size and prints each paragraph on one line.
+
+  A binary wanting help wrapped to the terminal enables clap's `wrap_help` feature itself.
+
+- Changed every dependency to `default-features = false`, enabling only the features the code uses.
+
+  A binary built with `terminal` alone links 10 fewer crates (anstream, anstyle-parse, anstyle-query, bitflags, colorchoice, is_terminal_polyfill, linux-raw-sys, rustix, terminal_size, utf8parse), and one built with `build` alone drops toml_writer.
+
 ## [0.3.1] - 2026-11-03
 
 ### Changed
