@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- Added `fields::Fields`, a text record printed as `Label: value` lines aligned the way clap aligns its help.
 - Added `wizard::keyring::KeyringProvider::store`, storing a secret through the provider's CLI.
 
   The secret goes on the program's stdin, never on its arguments.
