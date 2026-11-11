@@ -2,7 +2,9 @@
 //!
 //! The [`Printer`] trait abstracts how a command emits what it prints:
 //! events while it runs, then its result. The [`StdoutPrinter`]
-//! implementation writes plain text or JSON to stdout.
+//! implementation writes plain text or JSON to stdout, the
+//! [`CapturePrinter`] keeps it as JSON values for a caller such as an MCP
+//! server.
 //!
 //! Every value a command prints is data: a named type whose `Display`
 //! writes the text form and whose `Serialize` writes the JSON one. There
@@ -17,8 +19,9 @@ use std::{
     io::{IsTerminal, Stdout, Write, stdout},
 };
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use serde::Serialize;
+use serde_json::Value;
 
 use crate::{clap::args::JsonFlag, output::Bytes};
 
@@ -122,6 +125,49 @@ impl Printer for StdoutPrinter {
     }
 }
 
+/// A [`Printer`] keeping each value and event a command prints as JSON,
+/// for a caller that hands them on rather than printing them.
+#[derive(Debug, Default)]
+pub struct CapturePrinter {
+    /// The values printed, in order.
+    pub values: Vec<Value>,
+    /// The events printed, in order.
+    pub events: Vec<Value>,
+}
+
+impl CapturePrinter {
+    /// The one value the command printed, failing when it printed none or
+    /// several.
+    pub fn into_single(mut self) -> Result<Value> {
+        if self.values.len() != 1 {
+            let n = self.values.len();
+            bail!("The command printed {n} values, one expected");
+        }
+
+        Ok(self.values.remove(0))
+    }
+}
+
+impl Printer for CapturePrinter {
+    fn out<T: fmt::Display + Serialize>(&mut self, data: T) -> Result<()> {
+        self.values.push(serde_json::to_value(&data)?);
+        Ok(())
+    }
+
+    fn event<T: fmt::Display + Serialize>(&mut self, event: T) -> Result<()> {
+        self.events.push(serde_json::to_value(&event)?);
+        Ok(())
+    }
+
+    fn out_bytes(&mut self, bytes: Bytes) -> Result<()> {
+        self.out(bytes)
+    }
+
+    fn is_json(&self) -> bool {
+        true
+    }
+}
+
 /// A [`Printer`] keeping the rendered output in memory, for tests.
 #[cfg(test)]
 #[derive(Default)]
@@ -147,5 +193,41 @@ impl Printer for TestPrinter {
     fn out_bytes(&mut self, bytes: Bytes) -> Result<()> {
         self.output = String::from_utf8_lossy(&bytes.data).into_owned();
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use crate::printer::{CapturePrinter, Printer};
+
+    #[test]
+    fn a_single_value_is_taken_and_events_kept_apart() {
+        let mut printer = CapturePrinter::default();
+        printer.event(json!({ "event": "a" })).unwrap();
+        printer.out(json!({ "id": 1 })).unwrap();
+
+        assert_eq!(printer.events, [json!({ "event": "a" })]);
+        assert_eq!(printer.into_single().unwrap(), json!({ "id": 1 }));
+    }
+
+    #[test]
+    fn the_count_of_values_is_the_one_printed() {
+        let none = CapturePrinter::default().into_single().unwrap_err();
+        assert_eq!(
+            none.to_string(),
+            "The command printed 0 values, one expected"
+        );
+
+        let mut printer = CapturePrinter::default();
+        printer.out(json!(1)).unwrap();
+        printer.out(json!(2)).unwrap();
+
+        let two = printer.into_single().unwrap_err();
+        assert_eq!(
+            two.to_string(),
+            "The command printed 2 values, one expected"
+        );
     }
 }

@@ -20,9 +20,11 @@ Unlike the io-* protocol libraries, Pimalaya CLI is not no_std and never will be
 Every tool sits behind its own feature, so binaries pull in only what they use:
 
 ```sh
-cargo build                                              # every tool (default features)
+cargo build                                              # the default features: build, prompt, spinner, terminal
 cargo build --no-default-features --features build       # build-script helpers only
 cargo build --no-default-features --features terminal    # clap glue, printer, text layouts, logger, error report
 cargo build --no-default-features --features prompt      # interactive prompts
 cargo build --no-default-features --features spinner     # cancellable spinner
+cargo build --no-default-features --features repl        # read-eval-print loop over stdin, with terminal
+cargo build --no-default-features --features mcp         # MCP server over stdio, with terminal
 ```

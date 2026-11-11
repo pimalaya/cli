@@ -6,7 +6,7 @@ status: current
 
 # Output
 
-The printer writes a command's events and result to stdout, as text or JSON, and the JSON Schema command describes what the JSON looks like. Every output is data: a described value, never a sentence.
+The printer writes a command's events and result to stdout, as text or JSON, or keeps them as JSON for a caller handing them on, and the JSON Schema command describes what the JSON looks like. Every output is data: a described value, never a sentence.
 
 ### Requirement: Piped JSON is newline-delimited
 When JSON output is enabled and stdout is not a terminal, the printer SHALL write each value as compact JSON followed by a newline, and SHALL flush after it, so a process emitting several values produces one parseable JSON value per line.
@@ -84,3 +84,11 @@ A command MAY print events before its result, each as soon as the command observ
 
 ### Requirement: Events are described apart
 The registry SHALL hold an `events` map beside `schemas`, keyed by command path, each entry one type whose alternatives are the command's tagged events. `json-schema` SHALL write an entry as `<key>.events.json` with the `$id` `https://pimalaya.org/schemas/<bin>/v<version>/<key>.events.json`. The registry check SHALL cover both maps, report a result root holding `event` and an event alternative without it.
+
+### Requirement: A capture printer counts its values
+`printer::CapturePrinter` SHALL keep each value and each event a command prints as JSON, and SHALL report itself as printing JSON. `into_single` SHALL answer the value when exactly one was printed, and fail with `The command printed <n> values, one expected` otherwise, `<n>` the number printed.
+
+#### Scenario: Two values
+- GIVEN a command printing two values
+- WHEN the single value is taken
+- THEN it fails with `The command printed 2 values, one expected`

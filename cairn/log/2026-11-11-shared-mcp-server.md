@@ -1,0 +1,19 @@
+---
+cairn: log
+change: shared-mcp-server
+landed: 2026-11-11
+---
+
+# Shared MCP server
+
+The JSON-RPC half of the MCP servers of Ortie and Himalaya moved into pimalaya-cli behind a new `mcp` feature, which needs nothing beyond `terminal`.
+
+- src/mcp.rs: `ServerInfo<'a> { name, version, instructions }`, `PROTOCOL_VERSIONS` (2025-06-18 alone) and the JSON-RPC codes as constants. `read(line, info, tools) -> Incoming` (`Reply`, `Call(ToolCall)`, `Ignore`) answers the protocol, `answer` wraps it for one line with a closure running the call, `send` writes one flushed line, `serve` is the blocking loop over stdin (Himalaya's shape), `spawn_stdin_reader(events, wrap)` a thread sending `Input::Line(bytes)` then `Input::Eof` into the binary's channel (Ortie's shape), both claiming stdin. `ToolCall::respond` builds the response; `ToolResult { content, structured_content, is_error }` serializes as MCP's and is built by `success`, `failure` (a failure object already built, as Ortie keeps one per flow), `error::<C>` and `printed::<C>`.
+- The audit's defects, fixed: the value count is taken before anything is popped (`CapturePrinter::into_single`), so two values read `printed 2`; a batch, a scalar or `null` gets -32600 with a null id; `jsonrpc` other than `"2.0"` and an id that is neither a string nor a number get -32600; lines are read as bytes and a non-UTF-8 one gets -32700 instead of ending the server; `exit_on_failure::<C, T>` prints a failure as text on stderr and exits 1; `tool_output_schema` keeps a schema only under a root typed `object`; `initialize` echoes a supported client version and answers the latest otherwise.
+- New in `read`: an argument a tool's `inputSchema` does not declare, when it sets `additionalProperties: false`, is refused as an `isError` result naming the declared ones (`Unknown argument <key>, <tool> takes <names>`, or `takes none`), Ortie's wording, so both apps' tests keep their substrings. An object without `method` answers -32600 with its id, or a null id when it has none, where both apps stayed silent.
+- src/mcp/grammar.rs: Himalaya's tool-from-clap code as `Grammar::new(path, command)`, with `retain` (the binary's gates and exclusions), `fixed`, `one`, `names`, `input_schema` and `argv`. Himalaya's `max-width` exclusion is gone with the tables. Two behaviours changed: an optional single positional is no longer marked required (after `Command::build` every positional taking a value has a minimum of one, which Himalaya read as required; only a repeatable positional needing a value is), and `argv` refuses a count other than one for an argument taking one, where Himalaya let clap take several. `unknown_argument`, crate-private in mcp.rs, words both refusals alike.
+- src/printer.rs, behind `terminal`: `CapturePrinter { values, events }`, the apps' `McpPrinter`, public so a server and an app's tests can use it.
+
+Tests: every `read` answer (parse error, non-UTF-8, batch and scalars, wrong `jsonrpc`, response object, bad id, notification and blank line, unknown method, ping, initialize with a supported, an unsupported and no version, tools/list, the -32602 cases, a checked call, an undeclared argument), the tool results (events then value, partial outcome, failure, 0 and 2 values, a non-object value), `tool_output_schema` against reference, `anyOf`, `oneOf`, array and nullable roots and a schemars root, `serve_on` over a cursor holding a NUL line, `read_lines` with a non-UTF-8 line and no final newline, and the grammar on a small built tree: Himalaya's fixed-argument argv (`--mailbox=-odd --stdout -- m2 3`), the array of one, the argv parsed back by the same command, flags, wrong shapes, `retain`, and the required repeatable positional beside an optional one.
+
+Spec: mcp (new), output ("A capture printer counts its values" added, the intro names the capture).

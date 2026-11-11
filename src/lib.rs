@@ -33,6 +33,12 @@
 //! creating it from the sample shipped next to the binary, then the first
 //! command to run. The shell module quotes such commands for a paste.
 //!
+//! A binary keeping one account open across commands runs a session over
+//! its stdin: the repl module reads one command per line with the
+//! binary's own grammar, the mcp module answers Model Context Protocol
+//! requests, its tools derived from that grammar or written by hand, and
+//! the session module keeps the commands they run off stdin.
+//!
 //! The prompt and spinner modules handle interactive input and progress.
 //! The build module exposes helpers for build scripts.
 
@@ -48,14 +54,20 @@ pub mod error;
 pub mod fields;
 #[cfg(feature = "terminal")]
 pub mod log;
+#[cfg(feature = "mcp")]
+pub mod mcp;
 #[cfg(feature = "terminal")]
 pub mod output;
 #[cfg(feature = "terminal")]
 pub mod printer;
 #[cfg(feature = "prompt")]
 pub mod prompt;
+#[cfg(feature = "repl")]
+pub mod repl;
 #[cfg(feature = "terminal")]
 pub mod sanitize;
+#[cfg(any(feature = "repl", feature = "mcp"))]
+pub mod session;
 #[cfg(feature = "terminal")]
 pub mod shell;
 #[cfg(feature = "spinner")]

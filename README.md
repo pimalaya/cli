@@ -21,6 +21,7 @@ Shared building blocks for the Pimalaya command-line tools: the pieces every CLI
 - **Output rendering**: a printer that writes command output and a reporter that writes failures, both to stdout, as JSON or as plain text: records as aligned `Label: value` lines, lists as borderless aligned columns, untrusted strings defused.
 - **Logging**: a logger initialized from a shared verbosity flag.
 - **Interactive input**: text, confirmation and choice prompts, and a cancellable spinner for long-running work.
+- **Sessions**: a read-eval-print loop running the binary's own commands over stdin, and a Model Context Protocol server over stdio whose tools may take their input from the clap grammar, both holding one account open across commands.
 - **Build helpers**: small utilities for build scripts, such as feature and git metadata.
 
 > [!TIP]
