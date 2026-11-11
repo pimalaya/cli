@@ -4,9 +4,11 @@
 //! row of labels, then one row per item, the cells aligned in columns
 //! two spaces apart, with no border and no colour. Each line is one item,
 //! greppable and split on blanks, and the list ends with a newline like
-//! every text output. [`Fields`] is its twin for a single record.
+//! every text output. [`Fields`] is its twin for a single record, and
+//! [`Records`] its counterpart for items too wide for one line.
 //!
 //! [`Fields`]: crate::fields::Fields
+//! [`Records`]: crate::records::Records
 
 use std::{borrow::Cow, fmt, iter};
 

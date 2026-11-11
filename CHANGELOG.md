@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Added `records::Records`, a text list printed the way `git log` prints commits: per item a title line with its state words, its `fields::Fields`, then its free text as a body indented by four spaces, one blank line between items.
+
+  It suits a list whose rows carry more than one value of unbounded length, which `columns::Columns` would let wrap.
+
 ## [0.4.0] - 2026-11-11
 
 ### Added

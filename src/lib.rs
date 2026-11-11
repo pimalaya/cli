@@ -24,9 +24,10 @@
 //!
 //! Text output is plain text: no border, no colour, nothing sized to the
 //! terminal. The fields module lays a record out as aligned `Label: value`
-//! lines, the columns module a list as aligned columns under a header,
-//! and the sanitize module defuses untrusted text before either prints
-//! it.
+//! lines, the columns module a list of short rows as aligned columns under
+//! a header, the records module a list of wide items the way `git log`
+//! prints commits, and the sanitize module defuses untrusted text before
+//! any of them prints it.
 //!
 //! A binary has no setup wizard: on a first run, the welcome module tells
 //! a person which configuration file is missing and prints the commands
@@ -62,6 +63,8 @@ pub mod output;
 pub mod printer;
 #[cfg(feature = "prompt")]
 pub mod prompt;
+#[cfg(feature = "terminal")]
+pub mod records;
 #[cfg(feature = "repl")]
 pub mod repl;
 #[cfg(feature = "terminal")]
