@@ -108,7 +108,7 @@ impl ToolCall {
 #[derive(Clone, Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ToolResult {
-    /// The content items, each `{type, ...}`.
+    /// The content items, each `{type, ...}`, a text one built by [`text`].
     pub content: Vec<Value>,
     /// The structured result, an object.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -345,6 +345,12 @@ pub fn error_object<C: ErrorCode>(err: Error) -> Value {
         .unwrap_or_else(|err| Value::from(err.to_string()))
 }
 
+/// The text content item `{"type": "text", "text": text}` of a tool
+/// result.
+pub fn text(text: impl Into<String>) -> Value {
+    json!({ "type": "text", "text": text.into() })
+}
+
 /// The message refusing an argument `key` that `owner` does not declare,
 /// naming the `known` ones.
 pub(crate) fn unknown_argument<'a>(
@@ -476,11 +482,6 @@ fn call(id: Value, params: Option<&Value>, tools: &[Value]) -> Incoming {
 /// A JSON-RPC error response.
 fn error(id: Value, code: i64, message: impl Into<String>) -> Value {
     json!({ "jsonrpc": "2.0", "id": id, "error": { "code": code, "message": message.into() } })
-}
-
-/// A text content item.
-fn text(text: String) -> Value {
-    json!({ "type": "text", "text": text })
 }
 
 fn is_false(value: &bool) -> bool {

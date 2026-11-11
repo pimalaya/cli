@@ -50,3 +50,6 @@ shlex = { version = "2", default-features = false, optional = true }
 thiserror = { version = "2", default-features = false, features = ["std"], optional = true }
 toml = { version = "1.1", default-features = false, features = ["parse", "serde"], optional = true }
 unicode-width = { version = "0.2", default-features = false, optional = true }
+
+[dev-dependencies]
+clap = { version = "4.4", default-features = false, features = ["std", "usage"] }

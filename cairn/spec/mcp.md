@@ -35,6 +35,9 @@ The `mcp` feature gives a binary a Model Context Protocol server over stdio: one
 ### Requirement: A tool result is what the command printed
 `mcp::ToolResult::printed` SHALL turn what a command printed into a `printer::CapturePrinter` into a tool result: each event first, one text item each, then the single value as a text item, also as `structuredContent` when it is an object. A command ending with a partial outcome SHALL keep that result and set `isError: true`. A failed command, or one that printed a number of values other than one, SHALL give `isError: true` with the failure object as text and no `structuredContent`.
 
+### Requirement: A text item has one builder
+`mcp::text` SHALL build the text content item `{"type": "text", "text": <text>}`, the one a `ToolResult` holds for each event, value and failure object, so a binary adding an item of its own does not spell it.
+
 ### Requirement: An output schema has an object root
 `mcp::tool_output_schema` SHALL answer a JSON Schema as a tool's `outputSchema` only when its root is typed `object`, and nothing for a root that is a reference, an `anyOf` or a `oneOf`, even of objects.
 

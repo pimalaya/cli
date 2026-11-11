@@ -139,6 +139,8 @@ pub fn code_of<C: ErrorCode>(err: &Error) -> Option<C> {
 pub struct ErrorReport<C = NoErrorCode> {
     error: Error,
     code: Option<C>,
+    /// The text hint naming `--log-level` while debug logs are off.
+    pub(crate) log_level_hint: &'static str,
 }
 
 impl ErrorReport {
@@ -175,7 +177,7 @@ impl<C: ErrorCode> ErrorReport<C> {
 
     fn suggestions(&self) -> Option<&str> {
         if !log_enabled!(Level::Debug) {
-            Some("Run with --log-level to enable more verbose logs")
+            Some(self.log_level_hint)
         } else {
             None
         }
@@ -195,7 +197,12 @@ impl<C: ErrorCode> ErrorReport<C> {
 impl<C: ErrorCode> From<Error> for ErrorReport<C> {
     fn from(error: Error) -> Self {
         let code = code_of(&error);
-        Self { error, code }
+
+        Self {
+            error,
+            code,
+            log_level_hint: "Run with --log-level to enable more verbose logs",
+        }
     }
 }
 

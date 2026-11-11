@@ -44,6 +44,10 @@ const FIXED: &[&str] = &[
     "--log-file",
 ];
 
+/// The text hint of a failure while debug logs are off: `--log-level` is
+/// fixed when the session starts.
+const LOG_LEVEL_HINT: &str = "Restart the session with --log-level to enable more verbose logs";
+
 /// A read-eval-print loop over stdin for one binary.
 #[derive(Clone, Debug)]
 pub struct Repl {
@@ -106,6 +110,7 @@ impl Repl {
         // NOTE: the flattened `--json` would lend its doc as the about.
         let mut grammar = Line::<T>::command()
             .name(self.bin)
+            .bin_name(self.bin)
             .about(None)
             .long_about(None);
 
@@ -265,7 +270,11 @@ enum Step<T> {
 /// partial outcome, the failure object after a failure.
 fn answer<C: ErrorCode>(printer: &mut impl Printer, result: Result<()>) -> Result<()> {
     match result {
-        Err(err) if partial_outcome_of(&err).is_none() => printer.out(ErrorReport::<C>::from(err)),
+        Err(err) if partial_outcome_of(&err).is_none() => {
+            let mut report = ErrorReport::<C>::from(err);
+            report.log_level_hint = LOG_LEVEL_HINT;
+            printer.out(report)
+        }
         _ => Ok(()),
     }
 }
@@ -528,6 +537,24 @@ mod tests {
 
         assert!(stdout.starts_with("Error: Boom\n"), "{stdout}");
         assert_eq!(stderr, "app> app> ");
+    }
+
+    #[test]
+    fn a_failure_hints_at_restarting_the_session_for_logs() {
+        let (stdout, _) = session(false, false, b"fail\n");
+        let hint = "\n - Restart the session with --log-level to enable more verbose logs\n";
+        assert!(stdout.ends_with(hint), "{stdout}");
+    }
+
+    #[test]
+    fn a_command_help_names_the_binary_in_its_usage() {
+        let (stdout, _) = session(false, false, b"help echo\necho --help\n");
+        let usage: Vec<&str> = stdout
+            .lines()
+            .filter(|line| line.starts_with("Usage:"))
+            .collect();
+
+        assert_eq!(usage, ["Usage: app echo [OPTIONS] <WORD>"; 2], "{stdout}");
     }
 
     #[test]

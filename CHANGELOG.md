@@ -22,7 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Added `welcome::is_wanted`, telling whether a person reads the output: the printer is not JSON and stderr is a terminal.
 - Added the `repl` feature and `repl::Repl`, a read-eval-print loop running a binary's own commands over stdin.
 
-  Each line is split as a shell splits it and parsed with the binary's `clap::Subcommand` tree plus `--json`, which switches that line alone to JSON. Results and failure objects go to stdout, a partial outcome prints its result alone, a session flag such as `-a` or `-c` on a line is refused by name, and help in a JSON session goes to stderr.
+  Each line is split as a shell splits it and parsed with the binary's `clap::Subcommand` tree plus `--json`, which switches that line alone to JSON. Results and failure objects go to stdout, a partial outcome prints its result alone, a session flag such as `-a` or `-c` on a line is refused by name, and help in a JSON session goes to stderr. A command's help names the binary in its usage line, and a text failure hints to restart the session with `--log-level`, which a line cannot set.
 
 - Added `session::claim_stdin`, `session::check_stdin` and `session::in_session`, keeping the commands a REPL or an MCP server runs off its stdin.
 - Added the `mcp` feature and the `mcp` module, a Model Context Protocol server over stdio.
@@ -32,6 +32,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Added `mcp::grammar::Grammar`, a tool's input schema derived from a clap command and the argv a call turns back into.
 - Added `mcp::tool_output_schema`, keeping a JSON Schema as a tool's `outputSchema` only when its root is an object.
 - Added `mcp::error_object`, the failure object of an error as a failed tool call holds it.
+- Added `mcp::text`, the text content item of a tool result.
 - Added `printer::CapturePrinter`, keeping what a command prints as JSON values, whose `into_single` fails naming the number of values printed.
 
 ### Changed
