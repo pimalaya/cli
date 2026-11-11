@@ -5,15 +5,15 @@
 //! background OS thread, and disables itself when stderr is not a
 //! TTY.
 //!
-//! Typical use during a discovery flow:
+//! Typical use around a long-running operation:
 //!
 //! ```no_run
 //! use pimalaya_cli::spinner::Spinner;
 //!
-//! let spinner = Spinner::start("Probing autoconfig…");
-//! spinner.set_message("Trying imap.example.com:993");
-//! // … run the discovery work …
-//! spinner.success("Found IMAP server at imap.example.com:993");
+//! let spinner = Spinner::start("Connecting…");
+//! spinner.set_message("Listing mailboxes");
+//! // … run the long work …
+//! spinner.success("Listed 12 mailboxes");
 //! ```
 
 use std::{
