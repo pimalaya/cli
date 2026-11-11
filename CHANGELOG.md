@@ -31,6 +31,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Added `mcp::grammar::Grammar`, a tool's input schema derived from a clap command and the argv a call turns back into.
 - Added `mcp::tool_output_schema`, keeping a JSON Schema as a tool's `outputSchema` only when its root is an object.
+- Added `mcp::error_object`, the failure object of an error as a failed tool call holds it.
 - Added `printer::CapturePrinter`, keeping what a command prints as JSON values, whose `into_single` fails naming the number of values printed.
 
 ### Changed

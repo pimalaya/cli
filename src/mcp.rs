@@ -141,10 +141,7 @@ impl ToolResult {
     /// A failure holding the failure object of `err`, with the code of
     /// its chain.
     pub fn error<C: ErrorCode>(err: Error) -> Self {
-        let report = serde_json::to_value(ErrorReport::<C>::from(err))
-            .unwrap_or_else(|err| Value::from(err.to_string()));
-
-        Self::failure(report)
+        Self::failure(error_object::<C>(err))
     }
 
     /// What a command printed into `printer`, given how it ended.
@@ -339,6 +336,13 @@ pub fn exit_on_failure<C: ErrorCode, T>(result: Result<T>) -> T {
 /// registry's `non_object_roots` accepts as the shape of a printed value.
 pub fn tool_output_schema(schema: &Value) -> Option<&Value> {
     (schema["type"] == "object").then_some(schema)
+}
+
+/// The failure object of `err`, with the code of its chain, as a failed
+/// tool call holds it and as a binary keeps it to report later.
+pub fn error_object<C: ErrorCode>(err: Error) -> Value {
+    serde_json::to_value(ErrorReport::<C>::from(err))
+        .unwrap_or_else(|err| Value::from(err.to_string()))
 }
 
 /// The message refusing an argument `key` that `owner` does not declare,
