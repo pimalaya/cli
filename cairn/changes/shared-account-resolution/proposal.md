@@ -1,7 +1,7 @@
 ---
 cairn: change
 id: shared-account-resolution
-status: active
+status: abandoned
 created: 2026-10-18
 ---
 
@@ -25,3 +25,7 @@ The copies already disagree on what they return and on the wording of their thre
 One `resolve_account` in pimalaya-cli, behind the `terminal` and `wizard` features. What differs per binary is the configuration type, the wizard offer and the hint naming the sample configuration, so the open decision is how a binary hands those in: a trait its config implements, or closures passed at the call. That decision is the first task.
 
 Once released, the six repositories drop their copy. Each per-repo `cli-alignment-leftovers` change names the copy it will remove.
+
+## Abandoned
+
+Superseded on 2026-11-11 by pimalaya-config's account-resolution change: the wizards leave the family, so resolution needs no prompt and lives in pimalaya-config (`TomlConfig::load` and `take_account` with typed errors), and the first-run welcome in pimalaya-cli's `welcome` module.
