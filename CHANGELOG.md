@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-11
+
 ### Added
 
 - Added `columns::Columns`, a text list printed as borderless aligned columns under a header row.
@@ -280,7 +282,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Added the initial toolkit: clap arguments and commands, printer, logger, prompt, spinner, table, account wizards, error reporting, validators and build helpers.
 
-[unreleased]: https://github.com/pimalaya/cli/compare/v0.3.2..HEAD
+[unreleased]: https://github.com/pimalaya/cli/compare/v0.4.0..HEAD
+[0.4.0]: https://github.com/pimalaya/cli/compare/v0.3.2..v0.4.0
 [0.3.2]: https://github.com/pimalaya/cli/compare/v0.3.1..v0.3.2
 [0.3.1]: https://github.com/pimalaya/cli/compare/v0.3.0..v0.3.1
 [0.3.0]: https://github.com/pimalaya/cli/compare/v0.2.6..v0.3.0
