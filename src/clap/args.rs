@@ -19,21 +19,17 @@ pub struct AccountFlag {
     pub name: Option<String>,
 }
 
-/// The config path flags parser.
+/// The config path flags parser, one path per flag.
 #[derive(Debug, Default, Parser)]
 pub struct ConfigFlags {
     /// Override the default configuration file path.
     ///
-    /// The given paths are shell-expanded then canonicalized (if
-    /// applicable). If the first path does not point to a valid file, the
-    /// wizard will propose to assist you in the creation of the configuration
-    /// file. Other paths are merged with the first one, which allows you to
-    /// separate your public config from your private(s) one(s). Multiple paths
-    /// can also be provided by delimiting them with `:` (like `$PATH` in a
-    /// POSIX shell).
-    #[arg(short = 'c', long = "config", global = true)]
-    #[arg(name = "config_paths", value_name = "PATH")]
-    #[arg(value_parser = path_parser, value_delimiter = ':')]
+    /// Paths are shell-expanded, then canonicalized when applicable.
+    /// Repeat the flag to merge several files: the first one is the base
+    /// and the next ones are merged on top, which is how a public config
+    /// and a private one combine.
+    #[arg(long = "config", short = 'c', global = true)]
+    #[arg(name = "config_paths", value_name = "PATH", value_parser = path_parser)]
     pub paths: Vec<PathBuf>,
 }
 
@@ -76,7 +72,7 @@ pub struct LogFlags {
     /// Filter log output by level.
     ///
     /// When omitted, the `RUST_LOG` environment variable is consulted
-    /// (it supports per-target filters — see the `env_logger`
+    /// (it supports per-target filters, see the `env_logger`
     /// documentation). When present, this flag overrides `RUST_LOG`
     /// entirely.
     #[arg(name = "log-level", long = "log-level", visible_alias = "log")]
@@ -163,4 +159,21 @@ macro_rules! footer {
 	    "  https://pimalaya.org/sponsor/\n",
         )
     };
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use clap::Parser;
+
+    use crate::clap::args::ConfigFlags;
+
+    #[test]
+    fn a_config_path_is_never_split() {
+        let args = ["app", "-c", r"C:\a.toml", "-c", "b:c;d.toml"];
+        let flags = ConfigFlags::try_parse_from(args).unwrap();
+        let paths = [PathBuf::from(r"C:\a.toml"), PathBuf::from("b:c;d.toml")];
+        assert_eq!(flags.paths, paths);
+    }
 }

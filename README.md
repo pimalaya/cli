@@ -18,10 +18,9 @@ Shared building blocks for the Pimalaya command-line tools: the pieces every CLI
 ## Features
 
 - **Argument parsing glue**: shared clap arguments and the ready-made completion, manual page and JSON Schema generation commands, so every binary exposes them the same way: a positional list selecting what to generate, an optional `--dir` to write files in, and the standard output otherwise.
-- **Output rendering**: a printer that writes command output and a reporter that writes failures, both to stdout, with optional JSON output and formatted tables.
+- **Output rendering**: a printer that writes command output and a reporter that writes failures, both to stdout, as JSON or as plain text: records as aligned `Label: value` lines, lists as borderless aligned columns, untrusted strings defused.
 - **Logging**: a logger initialized from a shared verbosity flag.
-- **Interactive input**: text and password prompts, reusable value validators, and a cancellable spinner for long-running work.
-- **Account wizards**: guided collection of account settings per protocol, IMAP, SMTP, JMAP, CalDAV and CardDAV, each behind its matching feature.
+- **Interactive input**: text, confirmation and choice prompts, and a cancellable spinner for long-running work.
 - **Build helpers**: small utilities for build scripts, such as feature and git metadata.
 
 > [!TIP]

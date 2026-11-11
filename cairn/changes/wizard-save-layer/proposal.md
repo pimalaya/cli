@@ -1,11 +1,13 @@
 ---
 cairn: change
 id: wizard-save-layer
-status: active
+status: abandoned
 created: 2026-10-18
 ---
 
 # The wizard save layer lives in pimalaya-cli
+
+> Abandoned on 2026-11-11: wizards leave the family (owner decision 2026-11-08), so there is no save layer to share.
 
 ## Why
 

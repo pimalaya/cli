@@ -1,10 +1,12 @@
 //! Text records printed as aligned fields.
 //!
-//! A command printing one record as text, rather than a table of many,
+//! A command printing one record as text, rather than a list of many,
 //! renders it as [`Fields`]: one `Label: value` line per field, the
 //! values aligned in one column the way clap aligns its help. Each line
 //! is greppable by its label, and the record ends with a newline like
-//! every text output.
+//! every text output. [`Columns`] is its twin for a list.
+//!
+//! [`Columns`]: crate::columns::Columns
 
 use std::fmt;
 
@@ -13,7 +15,9 @@ use std::fmt;
 /// Values start two spaces past the colon of the longest label. A value
 /// spanning several lines continues under its first line, and an empty
 /// one leaves its label alone. Values print as given: an untrusted one
-/// is sanitized first, as a table cell is.
+/// is sanitized first with [`sanitize::text`].
+///
+/// [`sanitize::text`]: crate::sanitize::text
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Fields<'a> {
     /// The labels and their rendered values, in print order.

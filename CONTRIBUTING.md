@@ -22,10 +22,7 @@ Every tool sits behind its own feature, so binaries pull in only what they use:
 ```sh
 cargo build                                              # every tool (default features)
 cargo build --no-default-features --features build       # build-script helpers only
-cargo build --no-default-features --features terminal    # clap glue, printer, logger, error report
-cargo build --no-default-features --features spinner      # cancellable spinner
-cargo build --no-default-features --features table        # formatted tables
-cargo build --no-default-features --features imap         # account wizard (pulls in wizard)
+cargo build --no-default-features --features terminal    # clap glue, printer, text layouts, logger, error report
+cargo build --no-default-features --features prompt      # interactive prompts
+cargo build --no-default-features --features spinner     # cancellable spinner
 ```
-
-The `imap`, `smtp`, `jmap`, `caldav` and `carddav` features each enable the `wizard` feature, since they only add their protocol-specific wizard submodule.

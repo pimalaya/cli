@@ -1,3 +1,5 @@
+//! The manual command, writing man pages.
+
 use std::{fmt, fs, path::PathBuf};
 
 use anyhow::{Context, Result, bail};
@@ -144,8 +146,7 @@ pub(crate) struct PageFile {
 mod tests {
     use clap::Command;
 
-    use super::ManualCommand;
-    use crate::printer::TestPrinter;
+    use crate::{clap::commands::manual::ManualCommand, printer::TestPrinter};
 
     #[test]
     fn single_command_page_goes_to_output() {

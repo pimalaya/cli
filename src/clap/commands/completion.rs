@@ -1,3 +1,5 @@
+//! The completion command, writing shell completion scripts.
+
 use std::{fmt, fs, path::PathBuf};
 
 use anyhow::{Context, Result, bail};
@@ -126,7 +128,7 @@ pub(crate) struct ScriptFile {
     path: PathBuf,
 }
 
-pub fn serialize_shell<S: Serializer>(shell: &Shell, s: S) -> Result<S::Ok, S::Error> {
+fn serialize_shell<S: Serializer>(shell: &Shell, s: S) -> Result<S::Ok, S::Error> {
     s.serialize_str(&shell.to_string())
 }
 
@@ -135,8 +137,7 @@ mod tests {
     use clap::Command;
     use clap_complete::Shell;
 
-    use super::CompletionCommand;
-    use crate::printer::TestPrinter;
+    use crate::{clap::commands::completion::CompletionCommand, printer::TestPrinter};
 
     #[test]
     fn single_shell_script_goes_to_output() {

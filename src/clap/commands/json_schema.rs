@@ -1,3 +1,5 @@
+//! The JSON Schema command and the registry of what a binary prints.
+
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt, fs,
@@ -297,7 +299,7 @@ impl JsonSchemaCommand {
     /// Each schema is stamped with its `$id` first, then written the way
     /// [`ManualCommand`] renders one man page per subcommand.
     ///
-    /// [`ManualCommand`]: crate::clap::commands::ManualCommand
+    /// [`ManualCommand`]: crate::clap::commands::manual::ManualCommand
     pub fn execute(self, printer: &mut impl Printer, registry: JsonSchemaRegistry) -> Result<()> {
         let mut schemas = registry.stamped_files();
 

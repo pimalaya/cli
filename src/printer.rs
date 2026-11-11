@@ -2,13 +2,15 @@
 //!
 //! The [`Printer`] trait abstracts how a command emits what it prints:
 //! events while it runs, then its result. The [`StdoutPrinter`]
-//! implementation writes plain text or JSON to stdout, and
-//! [`PrintTable`] renders a value as a table.
+//! implementation writes plain text or JSON to stdout.
 //!
 //! Every value a command prints is data: a named type whose `Display`
 //! writes the text form and whose `Serialize` writes the JSON one. There
 //! is no message wrapper, a sentence being the text form of data, never
-//! data itself.
+//! data itself. A record's text form is [`Fields`], a list's [`Columns`].
+//!
+//! [`Columns`]: crate::columns::Columns
+//! [`Fields`]: crate::fields::Fields
 
 use std::{
     fmt,
@@ -19,13 +21,6 @@ use anyhow::{Context, Result};
 use serde::Serialize;
 
 use crate::{clap::args::JsonFlag, output::Bytes};
-
-/// A value that can render itself as a table.
-pub trait PrintTable {
-    /// Writes the table to the given writer, capped at an optional
-    /// maximum width.
-    fn print(&self, writer: &mut dyn Write, table_max_width: Option<u16>) -> Result<()>;
-}
 
 /// Sink a command writes its output to.
 pub trait Printer {

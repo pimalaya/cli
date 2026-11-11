@@ -277,12 +277,11 @@ struct ErrorReportOutput<C> {
 
 #[cfg(test)]
 mod tests {
-    use crate::clap::commands::output_schema;
     use anyhow::{Context, anyhow};
     use serde::Serialize;
     use serde_json::json;
 
-    use super::*;
+    use crate::{clap::commands::json_schema::output_schema, error::*};
 
     #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, JsonSchema)]
     #[serde(rename_all = "kebab-case")]

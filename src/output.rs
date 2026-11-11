@@ -107,7 +107,7 @@ impl<T: fmt::Display> fmt::Display for Paginated<T> {
 mod tests {
     use serde_json::json;
 
-    use crate::{clap::commands::output_schema, output::*};
+    use crate::{clap::commands::json_schema::output_schema, output::*};
 
     #[derive(Serialize, JsonSchema)]
     struct Rows {

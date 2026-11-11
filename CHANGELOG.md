@@ -6,6 +6,49 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Added `columns::Columns`, a text list printed as borderless aligned columns under a header row.
+
+  Columns are two spaces apart, widths count terminal display columns (unicode-width), an empty cell prints as `-` and a line break inside a cell as a space. Nothing is truncated or sized to the terminal, and the last column is never padded.
+
+- Added `shell::quote`, quoting a string for a paste into a POSIX shell, or into cmd and PowerShell on Windows.
+- Added `shell::invocation`, the binary with its quoted `-c` and `-a` flags that a printed command starts with.
+- Added `welcome::Welcome`, the first-run welcome naming the missing configuration, the commands creating it from the sample configuration, and the first command to run.
+
+  It creates the file from the shipped sample with `install -m 644` (`copy` on Windows), or downloads it with `curl` when none ships.
+
+- Added `welcome::shipped_sample`, finding the share/doc/<bin>/config.sample.toml a release or a package ships next to the binary.
+- Added `welcome::is_wanted`, telling whether a person reads the output: the printer is not JSON and stderr is a terminal.
+
+### Changed
+
+- **BREAKING**: Changed `clap::args::ConfigFlags` to take one path per `-c`, no longer splitting a value on `:`.
+
+  Repeat the flag to merge several files. A Windows path, or any path holding `:`, now stays whole. Its help no longer mentions the wizard.
+
+- **BREAKING**: Moved `table::sanitize` to `sanitize::text`, available with the `terminal` feature.
+- **BREAKING**: Changed the `completion`, `json_schema` and `manual` modules of `clap::commands` to public, dropping the re-exports of their items.
+
+  Import `clap::commands::completion::CompletionCommand`, `clap::commands::manual::ManualCommand` and `clap::commands::json_schema::{JsonSchemaCommand, JsonSchemaRegistry, output_schema}`.
+
+### Removed
+
+- **BREAKING**: Removed the `wizard` module, the `wizard`, `imap`, `smtp`, `jmap`, `caldav` and `carddav` features, and the `imap-wizard` example.
+
+  Wizards leave the Pimalaya CLIs: a first run without a configuration prints a `welcome::Welcome` instead.
+
+- **BREAKING**: Removed `prompt::u16`, `prompt::usize`, `prompt::secret`, `prompt::some_secret`, `prompt::password` and `prompt::items`, with the `PromptError` variants only they raised and the secrecy dependency.
+
+  `prompt::bool`, `prompt::text`, `prompt::some_text` and `prompt::item` stay.
+
+- **BREAKING**: Removed the `validator` module.
+- **BREAKING**: Removed the `table` module and feature, and the comfy-table dependency.
+
+  A list prints as `columns::Columns`, a record as `fields::Fields`.
+
+- **BREAKING**: Removed `printer::PrintTable`, which nothing implemented.
+
 ## [0.3.2] - 2026-11-11
 
 ### Added
