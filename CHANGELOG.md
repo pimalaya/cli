@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
   It suits a list whose rows carry more than one value of unbounded length, which `columns::Columns` would let wrap.
 
+### Changed
+
+- Changed the text cursor of `output::Paginated` to print after a blank line when the listing printed anything.
+
 ## [0.4.0] - 2026-11-11
 
 ### Added

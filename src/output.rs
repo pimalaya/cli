@@ -93,9 +93,14 @@ pub struct Paginated<T> {
 
 impl<T: fmt::Display> fmt::Display for Paginated<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.inner)?;
+        let inner = self.inner.to_string();
+        f.write_str(&inner)?;
 
         if let Some(cursor) = &self.next_page {
+            if !inner.is_empty() {
+                writeln!(f)?;
+            }
+
             writeln!(f, "Next page: {cursor}")?;
         }
 
@@ -138,6 +143,21 @@ mod tests {
             serde_json::to_value(page).unwrap(),
             json!({ "rows": [1], "nextPage": null })
         );
+    }
+
+    #[test]
+    fn the_text_cursor_follows_a_blank_line() {
+        let page = Paginated {
+            inner: "42\n",
+            next_page: Some(String::from("2")),
+        };
+        assert_eq!(page.to_string(), "42\n\nNext page: 2\n");
+
+        let page = Paginated {
+            inner: "",
+            next_page: Some(String::from("2")),
+        };
+        assert_eq!(page.to_string(), "Next page: 2\n");
     }
 
     #[test]
