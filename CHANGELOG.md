@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
   It suits a list whose rows carry more than one value of unbounded length, which `columns::Columns` would let wrap.
 
+- Added `tree::Trees`, a text list printed the way `tree` prints a directory: per item its title on a `├─ ` or `└─ ` branch, one line of detail under it and its own items hanging below, one blank line between roots.
+
+  It suits items hanging from a parent, the envelopes of a mailbox or the replies of a message.
+
 ### Changed
 
 - Changed the text cursor of `output::Paginated` to print after a blank line when the listing printed anything.

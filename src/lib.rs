@@ -26,8 +26,9 @@
 //! terminal. The fields module lays a record out as aligned `Label: value`
 //! lines, the columns module a list of short rows as aligned columns under
 //! a header, the records module a list of wide items the way `git log`
-//! prints commits, and the sanitize module defuses untrusted text before
-//! any of them prints it.
+//! prints commits, the tree module items hanging from a parent the way
+//! `tree` prints a directory, and the sanitize module defuses untrusted
+//! text before any of them prints it.
 //!
 //! A binary has no setup wizard: on a first run, the welcome module tells
 //! a person which configuration file is missing and prints the commands
@@ -75,5 +76,7 @@ pub mod session;
 pub mod shell;
 #[cfg(feature = "spinner")]
 pub mod spinner;
+#[cfg(feature = "terminal")]
+pub mod tree;
 #[cfg(feature = "terminal")]
 pub mod welcome;
