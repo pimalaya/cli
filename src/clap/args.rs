@@ -149,14 +149,14 @@ macro_rules! long_version {
 macro_rules! footer {
     () => {
         concat!(
-	    "This program is part of Pimalaya, free software funded entirely by grants and donations.\n",
-            "If you find it useful, consider supporting its development:\n",
-	    "\n",
-	    "Report bugs to:\n",
-	    "  ", env!("CARGO_PKG_REPOSITORY"), "/issues/\n",
-	    "\n",
-	    "Sponsoring:\n",
-	    "  https://pimalaya.org/sponsor/\n",
+            "Report bugs to:\n",
+            "  ", env!("CARGO_PKG_REPOSITORY"), "/issues/\n",
+            "\n",
+            "Sponsoring:\n",
+            "  https://pimalaya.org/sponsor/\n",
+            "\n",
+            "This program is part of Pimalaya, free software funded entirely by grants and donations.\n",
+            "If you find it useful, consider supporting its development.\n",
         )
     };
 }
