@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- Added `clap::parse` and `clap::parse_from`, to call in place of clap's `Parser::parse`: a command line the grammar refuses exits 2 and, with a `--json` word before any `--`, prints the failure object coded `usage-invalid` on stdout instead of clap's text on stderr.
+- Added `error::CommonCode`, the codes pimalaya-cli raises itself (`usage-invalid`), which the failure object's `code` and schema admit beside the binary's own, and `error::usage_error`, building that failure from a clap error.
+- Added `error::EXIT_USAGE`, 2.
 - Added `records::Records`, a text list printed the way `git log` prints commits: per item a title line with its state words, its `fields::Fields`, then its free text as a body indented by four spaces, one blank line between items.
 
   It suits a list whose rows carry more than one value of unbounded length, which `columns::Columns` would let wrap.
@@ -16,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
+- **BREAKING**: changed `error::EXIT_PARTIAL` and `error::PartialOutcome::default` to 3, and `PartialOutcome::new` to refuse a status below 3, since 2 is clap's for a refused command line. A binary documenting a partial outcome as exit 2 now exits 3, a higher status shifting with it.
 - Changed `mcp::grammar::Grammar` to type an argument parsed by an integer value parser as `integer`, and an argument taken through `one` as a required scalar instead of an array of one item (an array of one is still accepted).
 - Changed `mcp::grammar::Grammar` to take a lone value where an array is expected as an array of one, so a query given as one string runs.
 - Changed `mcp::grammar::Grammar` to write a long flag of a property mentioned between backquotes in a description as the property's name.
@@ -25,6 +29,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Fixed the REPL answering a line it cannot parse with `Error: error: ...` and a `null` code: the failure object now carries clap's message without its prefix and the code `usage-invalid`.
+- Fixed the MCP argument refusals (an undeclared argument, a value of the wrong type, a wrong count) printing a `null` code: they are coded `usage-invalid`.
 - Fixed `manual` writing pages for the first level of subcommands only: every visible command at any depth now gets a page named and titled after its dashed path (`<bin>-envelope-list`), with the whole command in its synopsis, and no `help` subcommand is listed, so each SEE ALSO entry names a page that exists.
 
 ## [0.4.0] - 2026-11-11

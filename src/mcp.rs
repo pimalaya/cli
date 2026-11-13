@@ -32,12 +32,12 @@ use std::{
     thread::{self, JoinHandle},
 };
 
-use anyhow::{Context, Error, Result, anyhow};
+use anyhow::{Context, Error, Result};
 use serde::Serialize;
 use serde_json::{Map, Value, json};
 
 use crate::{
-    error::{EXIT_FAILURE, ErrorCode, ErrorReport, NoErrorCode, partial_outcome_of},
+    error::{EXIT_FAILURE, ErrorCode, ErrorReport, NoErrorCode, partial_outcome_of, usage_invalid},
     printer::CapturePrinter,
     session::claim_stdin,
 };
@@ -361,12 +361,12 @@ pub(crate) fn unknown_argument<'a>(
     let known: Vec<String> = known.into_iter().map(|name| format!("`{name}`")).collect();
 
     if known.is_empty() {
-        anyhow!("Unknown argument `{key}`, {owner} takes none")
+        usage_invalid(format!("Unknown argument `{key}`, {owner} takes none"))
     } else {
-        anyhow!(
+        usage_invalid(format!(
             "Unknown argument `{key}`, {owner} takes {}",
             known.join(", ")
-        )
+        ))
     }
 }
 
@@ -710,6 +710,7 @@ mod tests {
             report["error"],
             "Unknown argument `di`, item_get takes `full`, `id`"
         );
+        assert_eq!(report["code"], "usage-invalid", "{report}");
 
         let line = r#"{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"item_list","arguments":{"x":1}}}"#;
         let none = reply(line);

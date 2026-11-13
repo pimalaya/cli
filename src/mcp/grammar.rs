@@ -9,11 +9,11 @@
 
 use std::any::TypeId;
 
-use anyhow::{Result, bail};
+use anyhow::Result;
 use clap::{Arg, ArgAction, Command, ValueHint};
 use serde_json::{Map, Value, json};
 
-use crate::mcp::unknown_argument;
+use crate::{error::usage_invalid, mcp::unknown_argument};
 
 /// A clap command as a tool's input.
 #[derive(Clone, Debug)]
@@ -171,7 +171,9 @@ impl Grammar {
 
             if arg.boolean {
                 let Some(enabled) = value.as_bool() else {
-                    bail!("Argument `{name}` must be a boolean");
+                    return Err(usage_invalid(format!(
+                        "Argument `{name}` must be a boolean"
+                    )));
                 };
 
                 if enabled && let Some(long) = &arg.long {
@@ -195,14 +197,18 @@ impl Grammar {
                 };
 
                 if arg.multiple && !arg.one {
-                    bail!("Argument `{name}` must be {one} or an array of {many}");
+                    return Err(usage_invalid(format!(
+                        "Argument `{name}` must be {one} or an array of {many}"
+                    )));
                 }
 
-                bail!("Argument `{name}` must be {one}");
+                return Err(usage_invalid(format!("Argument `{name}` must be {one}")));
             };
 
             if arg.one && values.len() != 1 {
-                bail!("Argument `{name}` takes exactly one value");
+                return Err(usage_invalid(format!(
+                    "Argument `{name}` takes exactly one value"
+                )));
             }
 
             match (&arg.long, arg.index) {
@@ -727,6 +733,10 @@ mod tests {
             .argv(&arguments(json!({ "stdout": "yes" })))
             .unwrap_err();
         assert_eq!(err.to_string(), "Argument `stdout` must be a boolean");
+        assert_eq!(
+            crate::error::code_of(&err),
+            Some(crate::error::CommonCode::UsageInvalid)
+        );
     }
 
     #[test]

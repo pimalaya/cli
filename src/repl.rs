@@ -27,7 +27,7 @@ use clap::{Command, CommandFactory, FromArgMatches, Parser, Subcommand};
 
 use crate::{
     clap::args::JsonFlag,
-    error::{ErrorCode, ErrorReport, partial_outcome_of},
+    error::{ErrorCode, ErrorReport, partial_outcome_of, usage_error},
     printer::{Printer, StdoutPrinter},
     session::claim_stdin,
 };
@@ -149,7 +149,9 @@ impl Repl {
                 Step::Clap { err, .. } if streams.interactive => {
                     write!(streams.stderr, "{}", err.render())?
                 }
-                Step::Clap { err, json } => answer::<C>(&mut printer(json), Err(err.into()))?,
+                Step::Clap { err, json } => {
+                    answer::<C>(&mut printer(json), Err(usage_error(&err)))?
+                }
             }
 
             streams.stdout.flush()?;
@@ -573,6 +575,13 @@ mod tests {
             error(&values[0]).contains("unrecognized subcommand"),
             "{stdout}"
         );
+        assert_eq!(values[0]["code"], "usage-invalid", "{stdout}");
         assert_eq!(stderr, "");
+
+        let (stdout, _) = session(false, false, b"frobnicate\n");
+        assert!(
+            stdout.starts_with("Error: unrecognized subcommand"),
+            "{stdout}"
+        );
     }
 }

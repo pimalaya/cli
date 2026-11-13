@@ -11,7 +11,9 @@
 //!
 //! A command that ran to its end but did not fully succeed prints its
 //! result, then returns a [`PartialOutcome`]: the process exits with its
-//! status, 2 or above, and prints nothing more.
+//! status, 3 or above, and prints nothing more. A command line the grammar
+//! refuses exits 2, its failure object coded `usage-invalid` under
+//! `--json` (see [`crate::clap::parse`]).
 
 use std::{
     backtrace::{Backtrace, BacktraceStatus},
@@ -38,6 +40,31 @@ impl<T: Clone + fmt::Debug + Serialize + JsonSchema + Send + Sync + 'static> Err
 /// The empty vocabulary of a binary whose failures carry no code.
 #[derive(Clone, Copy, Debug, Serialize, JsonSchema)]
 pub enum NoErrorCode {}
+
+/// The codes pimalaya-cli raises itself, beside every binary's own
+/// vocabulary.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub enum CommonCode {
+    /// The command line does not match the grammar: an unknown flag or
+    /// command, a missing argument, a bad value.
+    UsageInvalid,
+}
+
+/// The failure of a command line the grammar refuses, coded
+/// [`CommonCode::UsageInvalid`], with clap's message stripped of its
+/// `error: ` prefix and of its styles.
+pub fn usage_error(err: &clap::Error) -> Error {
+    let rendered = err.render().to_string();
+    let message = rendered.strip_prefix("error: ").unwrap_or(&rendered);
+    usage_invalid(message.trim_end())
+}
+
+/// A failure coded [`CommonCode::UsageInvalid`] with its own message, for
+/// arguments refused before clap sees them.
+pub(crate) fn usage_invalid(message: impl Into<String>) -> Error {
+    CodedError::new(CommonCode::UsageInvalid, message).into()
+}
 
 /// A failure carrying an [`ErrorCode`], anywhere in an error chain.
 #[derive(Debug)]
@@ -68,10 +95,13 @@ impl<C: fmt::Debug> std::error::Error for CodedError<C> {}
 /// object.
 pub const EXIT_FAILURE: i32 = 1;
 
+/// The exit status of a command line the grammar refuses, clap's own.
+pub const EXIT_USAGE: i32 = 2;
+
 /// The exit status of a command that ran to its end and printed its
 /// result, whose outcome is not a full success. A command may document
 /// higher statuses for other such outcomes.
-pub const EXIT_PARTIAL: i32 = 2;
+pub const EXIT_PARTIAL: i32 = 3;
 
 /// The outcome of a command that printed its result but did not fully
 /// succeed, such as a check with a failed backend or a refusal from a
@@ -91,11 +121,11 @@ impl PartialOutcome {
     /// # Panics
     ///
     /// When the status is below [`EXIT_PARTIAL`], which would read as a
-    /// success or as a failure object.
+    /// success, a failure object or a usage error.
     pub fn new(status: i32) -> Self {
         assert!(
             status >= EXIT_PARTIAL,
-            "partial outcome status {status} < 2"
+            "partial outcome status {status} < {EXIT_PARTIAL}"
         );
         Self { status }
     }
@@ -138,7 +168,7 @@ pub fn code_of<C: ErrorCode>(err: &Error) -> Option<C> {
 /// backtrace and code, as text or JSON.
 pub struct ErrorReport<C = NoErrorCode> {
     error: Error,
-    code: Option<C>,
+    code: Option<ReportCode<C>>,
     /// The text hint naming `--log-level` while debug logs are off.
     pub(crate) log_level_hint: &'static str,
 }
@@ -196,7 +226,9 @@ impl<C: ErrorCode> ErrorReport<C> {
 
 impl<C: ErrorCode> From<Error> for ErrorReport<C> {
     fn from(error: Error) -> Self {
-        let code = code_of(&error);
+        let code = code_of(&error)
+            .map(ReportCode::Binary)
+            .or_else(|| code_of::<CommonCode>(&error).map(ReportCode::Common));
 
         Self {
             error,
@@ -264,6 +296,15 @@ impl<C: ErrorCode> JsonSchema for ErrorReport<C> {
     }
 }
 
+/// The code of a failure object: the binary's own, or one pimalaya-cli
+/// raises itself.
+#[derive(Clone, Debug, Serialize, JsonSchema)]
+#[serde(untagged)]
+enum ReportCode<C> {
+    Binary(C),
+    Common(CommonCode),
+}
+
 // NOTE: the one shape both the serialization and the schema of
 // ErrorReport come from. Its doc comment below is the schema description.
 
@@ -271,9 +312,9 @@ impl<C: ErrorCode> JsonSchema for ErrorReport<C> {
 #[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct ErrorReportOutput<C> {
-    /// The stable code of the failure, `null` when the binary gave it
-    /// none.
-    code: Option<C>,
+    /// The stable code of the failure: the binary's own, `usage-invalid`
+    /// for a command line the grammar refuses, `null` when none was given.
+    code: Option<ReportCode<C>>,
     /// The outermost error message.
     error: String,
     /// The messages of the causes, outermost first.
@@ -334,6 +375,35 @@ mod tests {
         assert!(required.contains(&json!("code")), "{schema}");
         assert!(required.contains(&json!("error")), "{schema}");
         assert_eq!(schema["$defs"]["TestCode"]["enum"], json!(["body-pending"]));
+    }
+
+    #[derive(Debug, clap::Parser)]
+    struct App {
+        #[arg(long)]
+        count: u8,
+    }
+
+    fn refused(args: &[&str]) -> serde_json::Value {
+        let err = <App as clap::Parser>::try_parse_from(args).unwrap_err();
+        serde_json::to_value(ErrorReport::<TestCode>::from(usage_error(&err))).unwrap()
+    }
+
+    #[test]
+    fn a_refused_command_line_is_coded_usage_invalid_without_prefix() {
+        for args in [&["app", "--nope"][..], &["app"], &["app", "--count", "x"]] {
+            let json = refused(args);
+            let error = json["error"].as_str().unwrap();
+
+            assert_eq!(json["code"], "usage-invalid", "{json}");
+            assert!(!error.starts_with("error:"), "{error}");
+            assert!(!error.contains('\x1b'), "{error}");
+        }
+    }
+
+    #[test]
+    fn the_schema_admits_the_common_codes() {
+        let schema = output_schema::<ErrorReport<TestCode>>().to_string();
+        assert!(schema.contains("usage-invalid"), "{schema}");
     }
 
     #[test]
