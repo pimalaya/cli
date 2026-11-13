@@ -12,10 +12,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
   It suits a list whose rows carry more than one value of unbounded length, which `columns::Columns` would let wrap.
 
+- Added `mcp::grammar::Grammar::describe`, replacing the description of an argument whose command-line help does not hold for the tool.
+
 ### Changed
 
+- Changed `mcp::grammar::Grammar` to type an argument parsed by an integer value parser as `integer`, and an argument taken through `one` as a required scalar instead of an array of one item (an array of one is still accepted).
+- Changed `mcp::grammar::Grammar` to take a lone value where an array is expected as an array of one, so a query given as one string runs.
+- Changed `mcp::grammar::Grammar` to write a long flag of a property mentioned between backquotes in a description as the property's name.
 - Changed the text cursor of `output::Paginated` to print after a blank line when the listing printed anything.
 - Changed the `footer!` text to end with the Pimalaya paragraph, under the bug tracker and sponsoring links, its last sentence closing with a full stop.
+- Changed the `json-schema` help to name commands generically, instead of citing another program's command as its example.
+
+### Fixed
+
+- Fixed `manual` writing pages for the first level of subcommands only: every visible command at any depth now gets a page named and titled after its dashed path (`<bin>-envelope-list`), with the whole command in its synopsis, and no `help` subcommand is listed, so each SEE ALSO entry names a page that exists.
 
 ## [0.4.0] - 2026-11-11
 

@@ -7,6 +7,8 @@
 //! command line would carry and parsed by that same command, so what clap
 //! accepts or refuses, the tool does too.
 
+use std::any::TypeId;
+
 use anyhow::{Result, bail};
 use clap::{Arg, ArgAction, Command, ValueHint};
 use serde_json::{Map, Value, json};
@@ -71,11 +73,23 @@ impl Grammar {
     }
 
     /// Takes exactly one value of the repeatable arguments named `names`,
-    /// making each a required array of one item.
+    /// making each a required scalar.
     pub fn one(mut self, names: &[&str]) -> Self {
         for arg in &mut self.args {
             if arg.multiple && names.contains(&arg.name.as_str()) {
                 arg.one = true;
+            }
+        }
+
+        self
+    }
+
+    /// Replaces the description of the argument named `name`, for a help
+    /// written for the command line that does not hold for the tool.
+    pub fn describe(mut self, name: &str, description: &str) -> Self {
+        for arg in &mut self.args {
+            if arg.name == name {
+                arg.description = Some(description.to_owned());
             }
         }
 
@@ -88,16 +102,18 @@ impl Grammar {
     }
 
     /// The tool's `inputSchema`, refusing undeclared properties.
+    ///
+    /// A description naming the long flag of a property, as in `--send`
+    /// between backquotes, names the property instead.
     pub fn input_schema(&self) -> Value {
         let mut properties = Map::new();
         let mut required = Vec::new();
 
         for arg in &self.args {
-            let mut schema = arg.schema.clone();
+            let mut schema = arg.schema();
 
-            if arg.one {
-                schema["minItems"] = Value::from(1);
-                schema["maxItems"] = Value::from(1);
+            if let Some(description) = arg.description.as_deref() {
+                schema["description"] = Value::from(self.unflag(description));
             }
 
             if arg.required || arg.one {
@@ -113,6 +129,18 @@ impl Grammar {
             "required": required,
             "additionalProperties": false,
         })
+    }
+
+    /// `description` with each backquoted long flag of a property written
+    /// as the property's name.
+    fn unflag(&self, description: &str) -> String {
+        let mut description = description.to_owned();
+
+        for long in self.args.iter().filter_map(|arg| arg.long.as_deref()) {
+            description = description.replace(&format!("`--{long}`"), &format!("`{long}`"));
+        }
+
+        description
     }
 
     /// The argv of a call's `arguments`, for the root command to parse
@@ -153,20 +181,24 @@ impl Grammar {
                 continue;
             }
 
+            // A lone value stands for an array of one.
             let values = match value {
                 Value::Array(items) if arg.multiple => items.iter().map(scalar).collect(),
-                value if !arg.multiple => scalar(value).map(|value| vec![value]),
-                _ => None,
+                value => scalar(value).map(|value| vec![value]),
             };
 
             let Some(values) = values else {
-                let expected = if arg.multiple {
-                    "an array of strings"
+                let (one, many) = if arg.integer {
+                    ("an integer", "integers")
                 } else {
-                    "a string"
+                    ("a string", "strings")
                 };
 
-                bail!("Argument `{name}` must be {expected}");
+                if arg.multiple && !arg.one {
+                    bail!("Argument `{name}` must be {one} or an array of {many}");
+                }
+
+                bail!("Argument `{name}` must be {one}");
             };
 
             if arg.one && values.len() != 1 {
@@ -202,10 +234,12 @@ struct GrammarArg {
     long: Option<String>,
     index: Option<usize>,
     boolean: bool,
+    integer: bool,
     multiple: bool,
     required: bool,
     one: bool,
-    schema: Value,
+    item: Value,
+    description: Option<String>,
 }
 
 impl GrammarArg {
@@ -221,6 +255,7 @@ impl GrammarArg {
         };
 
         let boolean = matches!(arg.get_action(), ArgAction::SetTrue | ArgAction::Count);
+        let integer = parses_integer(arg);
         let num_args = arg.get_num_args();
         let multiple = matches!(arg.get_action(), ArgAction::Append)
             || num_args.is_some_and(|n| n.max_values() > 1);
@@ -236,20 +271,13 @@ impl GrammarArg {
             .map(|value| Value::from(value.get_name()))
             .collect();
 
-        let mut item = json!({ "type": "string" });
+        let mut item = match integer {
+            true => json!({ "type": "integer" }),
+            false => json!({ "type": "string" }),
+        };
 
         if !enumerated.is_empty() {
             item["enum"] = Value::Array(enumerated);
-        }
-
-        let mut schema = match (boolean, multiple) {
-            (true, _) => json!({ "type": "boolean" }),
-            (false, true) => json!({ "type": "array", "items": item }),
-            (false, false) => item,
-        };
-
-        if let Some(help) = arg.get_long_help().or(arg.get_help()) {
-            schema["description"] = Value::from(help.to_string());
         }
 
         Self {
@@ -257,12 +285,50 @@ impl GrammarArg {
             long: arg.get_long().map(ToString::to_string),
             index: arg.get_index(),
             boolean,
+            integer,
             multiple,
             required: arg.is_required_set() || at_least_one,
             one: false,
-            schema,
+            item,
+            description: arg
+                .get_long_help()
+                .or(arg.get_help())
+                .map(ToString::to_string),
         }
     }
+
+    /// The property's schema without its description: a boolean, one
+    /// item, or an array of items.
+    fn schema(&self) -> Value {
+        match (self.boolean, self.multiple && !self.one) {
+            (true, _) => json!({ "type": "boolean" }),
+            (false, true) => json!({ "type": "array", "items": self.item }),
+            (false, false) => self.item.clone(),
+        }
+    }
+}
+
+/// Whether an argument parses its values as integers, the way
+/// `value_parser!(u32)` and its ranges do.
+fn parses_integer(arg: &Arg) -> bool {
+    let id = arg.get_value_parser().type_id();
+
+    [
+        TypeId::of::<u8>(),
+        TypeId::of::<u16>(),
+        TypeId::of::<u32>(),
+        TypeId::of::<u64>(),
+        TypeId::of::<u128>(),
+        TypeId::of::<usize>(),
+        TypeId::of::<i8>(),
+        TypeId::of::<i16>(),
+        TypeId::of::<i32>(),
+        TypeId::of::<i64>(),
+        TypeId::of::<i128>(),
+        TypeId::of::<isize>(),
+    ]
+    .into_iter()
+    .any(|integer| id == integer)
 }
 
 /// Whether an argument becomes a property: not global, not help or
@@ -298,7 +364,7 @@ fn scalar(value: &Value) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use clap::{Arg, ArgAction, Command, ValueHint};
+    use clap::{Arg, ArgAction, Command, ValueHint, value_parser};
     use serde_json::{Map, Value, json};
 
     use crate::mcp::grammar::Grammar;
@@ -336,7 +402,12 @@ mod tests {
 
         let add = Command::new("add")
             .arg(Arg::new("target").value_name("TARGET"))
-            .arg(Arg::new("id").value_name("ID").num_args(1..));
+            .arg(Arg::new("id").value_name("ID").num_args(1..))
+            .arg(
+                Arg::new("page")
+                    .long("page")
+                    .value_parser(value_parser!(u32).range(1..)),
+            );
 
         let mut tree = Command::new("app")
             .no_binary_name(true)
@@ -399,19 +470,102 @@ mod tests {
     }
 
     #[test]
-    fn an_argument_taking_one_value_is_a_required_array_of_one() {
-        let schema = grammar(&tree()).input_schema();
-        let property = &schema["properties"]["attachment-id"];
+    fn an_argument_taking_one_value_is_a_required_scalar() {
+        let tree = tree();
+        let grammar = grammar(&tree).describe("attachment-id", "The attachment");
+        let schema = grammar.input_schema();
 
-        assert_eq!(property["type"], "array");
-        assert_eq!(property["minItems"], 1);
-        assert_eq!(property["maxItems"], 1);
+        assert_eq!(
+            schema["properties"]["attachment-id"],
+            json!({ "type": "string", "description": "The attachment" })
+        );
         assert!(
             schema["required"]
                 .as_array()
                 .unwrap()
                 .contains(&json!("attachment-id"))
         );
+
+        for value in [json!("3"), json!(3), json!(["3"])] {
+            let argv = grammar
+                .argv(&arguments(
+                    json!({ "message-id": "m", "attachment-id": value }),
+                ))
+                .unwrap();
+            assert_eq!(argv.last().unwrap(), "3");
+        }
+    }
+
+    #[test]
+    fn a_description_names_properties_rather_than_flags() {
+        let mut tree = Command::new("app").subcommand(
+            Command::new("send")
+                .arg(
+                    Arg::new("save")
+                        .long("save")
+                        .help("With `--copy`, from `--file` or `--hidden`"),
+                )
+                .arg(Arg::new("copy").long("copy").action(ArgAction::SetTrue))
+                .arg(Arg::new("file").long("file").value_name("PATH"))
+                .arg(Arg::new("hidden").long("hidden").hide(true)),
+        );
+        tree.build();
+
+        let leaf = tree.find_subcommand("send").unwrap();
+        let schema = Grammar::new(&["send"], leaf).input_schema();
+
+        assert_eq!(
+            schema["properties"]["save"]["description"],
+            "With `copy`, from `--file` or `--hidden`"
+        );
+    }
+
+    #[test]
+    fn a_lone_value_stands_for_an_array_of_one() {
+        let tree = tree();
+        let grammar = grammar(&tree);
+
+        let argv = grammar
+            .argv(&arguments(json!({ "header": "a b", "message-id": "m" })))
+            .unwrap();
+
+        assert_eq!(
+            argv,
+            [
+                "attachment",
+                "download",
+                "--header=a b",
+                "--stdout",
+                "--",
+                "m"
+            ]
+        );
+    }
+
+    #[test]
+    fn an_integer_value_parser_is_an_integer() {
+        let tree = tree();
+        let leaf = tree
+            .find_subcommand("flag")
+            .and_then(|group| group.find_subcommand("add"))
+            .unwrap();
+        let grammar = Grammar::new(&["flag", "add"], leaf);
+
+        assert_eq!(
+            grammar.input_schema()["properties"]["page"],
+            json!({ "type": "integer" })
+        );
+
+        let argv = grammar
+            .argv(&arguments(json!({ "page": 2, "id": "1" })))
+            .unwrap();
+        assert_eq!(argv, ["flag", "add", "--page=2", "--", "1"]);
+        assert!(tree.clone().try_get_matches_from(&argv).is_ok());
+
+        let err = grammar
+            .argv(&arguments(json!({ "page": [2] })))
+            .unwrap_err();
+        assert_eq!(err.to_string(), "Argument `page` must be an integer");
     }
 
     #[test]
@@ -541,12 +695,16 @@ mod tests {
                 "Argument `mailbox` must be a string",
             ),
             (
-                json!({ "header": "a" }),
-                "Argument `header` must be an array of strings",
+                json!({ "header": {} }),
+                "Argument `header` must be a string or an array of strings",
             ),
             (
                 json!({ "header": [[1]] }),
-                "Argument `header` must be an array of strings",
+                "Argument `header` must be a string or an array of strings",
+            ),
+            (
+                json!({ "attachment-id": {} }),
+                "Argument `attachment-id` must be a string",
             ),
             (
                 json!({ "attachment-id": ["1", "2"] }),

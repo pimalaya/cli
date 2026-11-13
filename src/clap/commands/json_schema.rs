@@ -280,11 +280,10 @@ fn is_object(root: &Value, schema: &Value) -> bool {
 pub struct JsonSchemaCommand {
     /// Command(s) for which JSON Schema should be generated for.
     ///
-    /// A command is named after its full path, dash-separated, as in
-    /// `himalaya-envelope-list`; the events a command prints before its
-    /// result are named with an `.events` suffix, as in
-    /// `neverest-sync.events`. Defaults to every schema, which requires a
-    /// directory.
+    /// A command is named after its full path: the program name followed
+    /// by each subcommand name, dash-separated; the events a command
+    /// prints before its result are named after it with an `.events`
+    /// suffix. Defaults to every schema, which requires a directory.
     pub cmds: Vec<String>,
 
     /// Save JSON Schemas to the given directory.

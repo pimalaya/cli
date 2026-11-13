@@ -124,3 +124,16 @@ pimalaya-cli SHALL NOT re-export an item, its own or a dependency's: a binary SH
 - GIVEN a prefix holding bin/ and share/doc/<bin>/config.sample.toml
 - WHEN the sample is looked up from bin/ or from the prefix itself
 - THEN both find that file, and neither does before it exists
+
+### Requirement: Every command has a manual page
+`manual` SHALL build the command tree with clap's `help` subcommands disabled, then give every visible command at any depth a page named after its dashed path, as in `<bin>-envelope-list`, its `.TH` title that name and its source the root's name and version, its synopsis the whole command. A name given SHALL be one of those, and every page listed under a page's SEE ALSO SHALL be one the same run can write. The `manual` and `json-schema` help SHALL name no program's command as an example.
+
+#### Scenario: A leaf page
+- GIVEN the tree `test` with the subcommand `sub` holding `list` and `search`
+- WHEN `manual test-sub-list` runs
+- THEN the page is titled `.TH test-sub-list 1` and its synopsis reads `test sub list`
+
+#### Scenario: Every page
+- GIVEN the same tree with a hidden subcommand `secret`
+- WHEN `manual --dir <dir>` runs
+- THEN it writes `test.1`, `test-sub.1`, `test-sub-list.1` and `test-sub-search.1`, and `test-sub.1` lists `test-sub-list(1)` and `test-sub-search(1)`, no `help(1)`
