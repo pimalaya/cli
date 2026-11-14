@@ -15,6 +15,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
   `ItemError::new` codes it by the outermost `CodedError` of the chain, and its text is one `<id>  <code>  <error>` line, `-` standing for an absent id or code. A result whose `errors` is not empty exits 3 through `PartialOutcome`. `JsonSchemaRegistry::check` takes its key, `<bin>-item-error`, as naming no command, like `<bin>-error`.
 
+- Added `listing::Listing` and `listing::ListingPage`, the frame of a text list: the fields placing it (`Account:`, what is listed, `Page:`, `Next page:`), one blank line, the items as `Columns` with no header row, then its item errors.
+- Added `error::ItemErrors`, the item errors a command prints last: one blank line, then one `Error:  <id>  <code>  <error>` line per error, aligned among themselves, nothing when there are none.
+- Added `capability::AccountCapabilityOutput`, `capability::AccountCapability` and `capability::CapabilityLevel`, the output of every binary's `account capability`: `{account, capabilities: [{name, backend, level, detail}]}`, printed one line per capability under the account.
 - Added `records::Records`, a text list printed the way `git log` prints commits: per item a title line with its state words, its `fields::Fields`, then its free text as a body indented by four spaces, one blank line between items.
 
   It suits a list whose rows carry more than one value of unbounded length, which `columns::Columns` would let wrap.

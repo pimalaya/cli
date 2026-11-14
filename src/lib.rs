@@ -25,7 +25,9 @@
 //! Text output is plain text: no border, no colour, nothing sized to the
 //! terminal. The fields module lays a record out as aligned `Label: value`
 //! lines, the columns module a list of short rows as aligned columns under
-//! a header, the records module a list of wide items the way `git log`
+//! a header, the listing module frames a list with the fields placing it and
+//! the errors of its items, the capability module prints what an account
+//! serves, the records module a list of wide items the way `git log`
 //! prints commits, and the sanitize module defuses untrusted text before
 //! any of them prints it.
 //!
@@ -46,6 +48,8 @@
 #[cfg(feature = "build")]
 pub mod build;
 #[cfg(feature = "terminal")]
+pub mod capability;
+#[cfg(feature = "terminal")]
 pub mod clap;
 #[cfg(feature = "terminal")]
 pub mod columns;
@@ -53,6 +57,8 @@ pub mod columns;
 pub mod error;
 #[cfg(feature = "terminal")]
 pub mod fields;
+#[cfg(feature = "terminal")]
+pub mod listing;
 #[cfg(feature = "terminal")]
 pub mod log;
 #[cfg(feature = "mcp")]

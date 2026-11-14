@@ -29,7 +29,7 @@ use schemars::JsonSchema;
 use serde::{Serialize, Serializer};
 use serde_json::Value;
 
-use crate::{printer::Printer, sanitize};
+use crate::{columns::Columns, printer::Printer, sanitize};
 
 /// A binary's vocabulary of stable failure codes.
 ///
@@ -326,17 +326,69 @@ impl<C: ErrorCode> ItemError<C> {
     }
 }
 
-impl<C: ErrorCode> fmt::Display for ItemError<C> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let id = sanitize::text(self.id.as_deref().unwrap_or("-"));
+impl<C: ErrorCode> ItemError<C> {
+    /// The id, the code and the message, sanitized, an absent one `-`.
+    fn cells(&self) -> [String; 3] {
+        let id = sanitize::text(self.id.as_deref().unwrap_or("-")).into_owned();
 
         let code = match &self.code {
-            Some(code) => serde_json::to_value(code).map_err(|_| fmt::Error)?,
+            Some(code) => serde_json::to_value(code).unwrap_or(Value::Null),
             None => Value::Null,
         };
-        let code = code.as_str().unwrap_or("-");
+        let code = code.as_str().unwrap_or("-").to_owned();
 
-        write!(f, "{id}  {code}  {}", sanitize::text(&self.error))
+        [id, code, sanitize::text(&self.error).into_owned()]
+    }
+}
+
+impl<C: ErrorCode> fmt::Display for ItemError<C> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let [id, code, error] = self.cells();
+        write!(f, "{id}  {code}  {error}")
+    }
+}
+
+/// The item errors a command prints last, one aligned `Error:` line each.
+///
+/// A command prints them after its output and one blank line, and prints
+/// nothing, blank line included, when there are none.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct ItemErrors {
+    /// The id, code and message cells of each error, in print order.
+    pub rows: Vec<[String; 3]>,
+}
+
+impl ItemErrors {
+    /// Appends the line of one item error.
+    pub fn push<C: ErrorCode>(&mut self, error: &ItemError<C>) {
+        self.rows.push(error.cells());
+    }
+
+    /// Whether no error was pushed.
+    pub fn is_empty(&self) -> bool {
+        self.rows.is_empty()
+    }
+
+    /// Writes one blank line then the errors, nothing when there are none.
+    pub fn write_after(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_empty() {
+            return Ok(());
+        }
+
+        writeln!(f)?;
+        write!(f, "{self}")
+    }
+}
+
+impl fmt::Display for ItemErrors {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut columns = Columns::default();
+
+        for [id, code, error] in &self.rows {
+            columns.push(["Error:", id, code, error]);
+        }
+
+        write!(f, "{columns}")
     }
 }
 
