@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Added `error::EXIT_USAGE`, 2.
 - Added `error::ItemError`, the error of one item a command could not list or act on, printed as `{id, code, error, sources}` in a result's `errors`.
 
-  `ItemError::new` codes it by the outermost `CodedError` of the chain, and its text is one `<id>  <code>  <error>` line, `-` standing for an absent id or code. A result whose `errors` is not empty exits 3 through `PartialOutcome`.
+  `ItemError::new` codes it by the outermost `CodedError` of the chain, and its text is one `<id>  <code>  <error>` line, `-` standing for an absent id or code. A result whose `errors` is not empty exits 3 through `PartialOutcome`. `JsonSchemaRegistry::check` takes its key, `<bin>-item-error`, as naming no command, like `<bin>-error`.
 
 - Added `records::Records`, a text list printed the way `git log` prints commits: per item a title line with its state words, its `fields::Fields`, then its free text as a body indented by four spaces, one blank line between items.
 

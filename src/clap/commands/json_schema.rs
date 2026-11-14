@@ -92,9 +92,10 @@ impl JsonSchemaRegistry {
     ///
     /// Reports every runnable command without a schema in either map,
     /// unless listed in `silent`; every key naming no runnable command,
-    /// `<bin>-error` aside; every result alternative holding an `event`
-    /// key; and every event alternative without one. A runnable command
-    /// is one without subcommands or whose subcommand is optional.
+    /// `<bin>-error` and `<bin>-item-error` aside; every result alternative
+    /// holding an `event` key; and every event alternative without one. A
+    /// runnable command is one without subcommands or whose subcommand is
+    /// optional.
     pub fn check(&self, command: &Command, silent: &[&str]) -> Vec<String> {
         let mut problems = Vec::new();
 
@@ -110,9 +111,10 @@ impl JsonSchemaRegistry {
         }
 
         let error_key = format!("{}-error", self.bin);
+        let item_error_key = format!("{}-item-error", self.bin);
 
         for key in self.schemas.keys().chain(self.events.keys()) {
-            if !runnable.contains(key) && *key != error_key {
+            if !runnable.contains(key) && *key != error_key && *key != item_error_key {
                 problems.push(format!("{key}: schema naming no command"));
             }
         }
@@ -552,6 +554,7 @@ mod tests {
     fn the_check_reports_undescribed_commands_and_dangling_keys() {
         let mut registry = registry("1.0.0");
         registry.schemas.insert("test-error".into(), json!({}));
+        registry.schemas.insert("test-item-error".into(), json!({}));
         registry.schemas.insert("test-x".into(), json!({}));
 
         assert_eq!(
