@@ -11,6 +11,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Added `clap::parse` and `clap::parse_from`, to call in place of clap's `Parser::parse`: a command line the grammar refuses exits 2 and, with a `--json` word before any `--`, prints the failure object coded `usage-invalid` on stdout instead of clap's text on stderr.
 - Added `error::CommonCode`, the codes pimalaya-cli raises itself (`usage-invalid`), which the failure object's `code` and schema admit beside the binary's own, and `error::usage_error`, building that failure from a clap error.
 - Added `error::EXIT_USAGE`, 2.
+- Added `error::ItemError`, the error of one item a command could not list or act on, printed as `{id, code, error, sources}` in a result's `errors`.
+
+  `ItemError::new` codes it by the outermost `CodedError` of the chain, and its text is one `<id>  <code>  <error>` line, `-` standing for an absent id or code. A result whose `errors` is not empty exits 3 through `PartialOutcome`.
+
 - Added `records::Records`, a text list printed the way `git log` prints commits: per item a title line with its state words, its `fields::Fields`, then its free text as a body indented by four spaces, one blank line between items.
 
   It suits a list whose rows carry more than one value of unbounded length, which `columns::Columns` would let wrap.

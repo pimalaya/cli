@@ -64,13 +64,13 @@ Inside a protocol namespace, a response the server sends before a command's comp
 Inside a protocol namespace, a completion the server refuses (an IMAP `NO` or `BAD`, an SMTP 4xx or 5xx reply, a ManageSieve `NO`, an HTTP 4xx or 5xx carrying the provider's error body) SHALL print as the result and exit 3. A command that gets no completion (a network, TLS or decoding failure, a local error) SHALL print the failure object and exit 1. Outside protocol namespaces, a refusal SHALL be a coded failure.
 
 ### Requirement: Shared nouns keep one shape
-Every binary SHALL print an account row as `{name, default, backends}`, a backend check row as `{backend, ok, code, error}`, a collection row as `{id, name, description, color, default}`, a queued action's row id as `row`, and an address as `{name, email}`.
+Every binary SHALL print an account row as `{name, default, backends}`, a backend check row as `{backend, ok, code, error}`, a collection row as `{id, name, description, color, default}`, a queued action's row id as `row`, an address as `{name, email}`, and the error of one item as `{id, code, error, sources}`.
 
 ### Requirement: A partial outcome prints its result
-A command that ran to its end with an outcome that is not a full success SHALL print its result and exit with a code of 3 or above, whose meaning the command documents; 2 SHALL stay clap's, for a refused command line. A `check` with a failed backend SHALL print every row and exit 3. pimalaya-cli SHALL provide a marker error a command returns once its result is printed, which the error report turns into the exit status without printing anything more.
+A command that ran to its end with an outcome that is not a full success SHALL print its result and exit with a code of 3 or above, whose meaning the command documents; 2 SHALL stay clap's, for a refused command line. A `check` with a failed backend SHALL print every row and exit 3. A result whose `errors` list is not empty SHALL exit 3. pimalaya-cli SHALL provide a marker error a command returns once its result is printed, which the error report turns into the exit status without printing anything more.
 
 ### Requirement: Events precede the result
-A command MAY print events before its result, each as soon as the command observes what it reports. An event SHALL be an object whose root carries `event`, a kebab-case name; a result SHALL NOT carry `event` at its root. The last line SHALL be the failure object when the exit code is 1 and the result otherwise; a command printing only events has no result. A failed item SHALL be an event field, never a failure object. With JSON output, each event SHALL be one flushed line; in text mode, events SHALL be written to stdout only when it is a terminal.
+A command MAY print events before its result, each as soon as the command observes what it reports. An event SHALL be an object whose root carries `event`, a kebab-case name; a result SHALL NOT carry `event` at its root. The last line SHALL be the failure object when the exit code is 1 and the result otherwise; a command printing only events has no result. A failed item SHALL never be a failure object: a command printing one result SHALL list it in its result's `errors`, an item error per failed item, `[]` when none failed, and a command reporting items as events MAY report it as an event field instead. With JSON output, each event SHALL be one flushed line; in text mode, events SHALL be written to stdout only when it is a terminal.
 
 #### Scenario: A sync piped to a script
 - GIVEN a command registering events
@@ -81,6 +81,11 @@ A command MAY print events before its result, each as soon as the command observ
 - GIVEN the same command without `--json`
 - WHEN its stdout is redirected to a file
 - THEN the file holds the result alone
+
+#### Scenario: A listing with one item that failed
+- GIVEN a listing of three items, one of which the backend could not read
+- WHEN it runs with `--json`
+- THEN it prints the two items read and an `errors` list holding the third's item error, and the exit code is 3
 
 ### Requirement: Events are described apart
 The registry SHALL hold an `events` map beside `schemas`, keyed by command path, each entry one type whose alternatives are the command's tagged events. `json-schema` SHALL write an entry as `<key>.events.json` with the `$id` `https://pimalaya.org/schemas/<bin>/v<version>/<key>.events.json`. The registry check SHALL cover both maps, report a result root holding `event` and an event alternative without it.

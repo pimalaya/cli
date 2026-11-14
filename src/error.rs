@@ -14,6 +14,9 @@
 //! status, 3 or above, and prints nothing more. A command line the grammar
 //! refuses exits 2, its failure object coded `usage-invalid` under
 //! `--json` (see [`crate::clap::parse`]).
+//!
+//! A command acting on several items lists the failure of each single
+//! item as an [`ItemError`] in its result's `errors`, then exits 3.
 
 use std::{
     backtrace::{Backtrace, BacktraceStatus},
@@ -24,8 +27,9 @@ use anyhow::{Error, Result};
 use log::{Level, log_enabled};
 use schemars::JsonSchema;
 use serde::{Serialize, Serializer};
+use serde_json::Value;
 
-use crate::printer::Printer;
+use crate::{printer::Printer, sanitize};
 
 /// A binary's vocabulary of stable failure codes.
 ///
@@ -296,6 +300,46 @@ impl<C: ErrorCode> JsonSchema for ErrorReport<C> {
     }
 }
 
+/// The error of one item a command could not list or act on.
+#[derive(Clone, Debug, Serialize, JsonSchema)]
+pub struct ItemError<C = NoErrorCode> {
+    /// The item's id as the command prints ids, `null` when unknown.
+    pub id: Option<String>,
+    /// The stable code of the failure, `null` when none was given.
+    pub code: Option<C>,
+    /// The outermost error message.
+    pub error: String,
+    /// The messages of the causes, outermost first.
+    pub sources: Vec<String>,
+}
+
+impl<C: ErrorCode> ItemError<C> {
+    /// Builds the error of the item `id` from `err`, coded by the
+    /// outermost [`CodedError`] of its chain.
+    pub fn new(id: Option<&str>, err: &Error) -> Self {
+        Self {
+            id: id.map(String::from),
+            code: code_of(err),
+            error: err.to_string(),
+            sources: err.chain().skip(1).map(ToString::to_string).collect(),
+        }
+    }
+}
+
+impl<C: ErrorCode> fmt::Display for ItemError<C> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let id = sanitize::text(self.id.as_deref().unwrap_or("-"));
+
+        let code = match &self.code {
+            Some(code) => serde_json::to_value(code).map_err(|_| fmt::Error)?,
+            None => Value::Null,
+        };
+        let code = code.as_str().unwrap_or("-");
+
+        write!(f, "{id}  {code}  {}", sanitize::text(&self.error))
+    }
+}
+
 /// The code of a failure object: the binary's own, or one pimalaya-cli
 /// raises itself.
 #[derive(Clone, Debug, Serialize, JsonSchema)]
@@ -417,5 +461,59 @@ mod tests {
     #[should_panic]
     fn a_partial_outcome_cannot_read_as_a_failure() {
         PartialOutcome::new(1);
+    }
+
+    fn unreadable() -> Error {
+        pending()
+            .context("Cannot decode line")
+            .context("Cannot read message 34")
+            .unwrap_err()
+    }
+
+    #[test]
+    fn an_item_error_finds_the_code_under_context() {
+        let json = serde_json::to_value(ItemError::<TestCode>::new(Some("34"), &unreadable()));
+
+        assert_eq!(
+            json.unwrap(),
+            json!({
+                "id": "34",
+                "code": "body-pending",
+                "error": "Cannot read message 34",
+                "sources": ["Cannot decode line", "not downloaded yet"],
+            })
+        );
+    }
+
+    #[test]
+    fn an_item_error_schema_requires_every_key() {
+        let schema = output_schema::<ItemError<TestCode>>();
+        let required = schema["required"].as_array().unwrap();
+
+        for key in ["id", "code", "error", "sources"] {
+            assert!(required.contains(&json!(key)), "{schema}");
+        }
+
+        assert_eq!(
+            schema["properties"]["id"]["type"],
+            json!(["string", "null"])
+        );
+        assert_eq!(
+            schema["properties"]["code"]["anyOf"][1],
+            json!({ "type": "null" })
+        );
+        assert_eq!(schema["$defs"]["TestCode"]["enum"], json!(["body-pending"]));
+    }
+
+    #[test]
+    fn an_item_error_displays_as_one_line() {
+        let coded = ItemError::<TestCode>::new(Some("34"), &unreadable());
+        let uncoded = ItemError::<TestCode>::new(None, &anyhow!("Cannot read\nline"));
+
+        assert_eq!(
+            coded.to_string(),
+            "34  body-pending  Cannot read message 34"
+        );
+        assert_eq!(uncoded.to_string(), "-  -  Cannot read\u{fffd}line");
     }
 }
