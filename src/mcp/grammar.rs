@@ -5,15 +5,22 @@
 //! schema, named as the CLI spells it: the long flag, or the value name
 //! of a positional. A call's arguments are written back as the words a
 //! command line would carry and parsed by that same command, so what clap
-//! accepts or refuses, the tool does too.
+//! accepts or refuses, the tool does too. A refusal names the argument as
+//! the tool's input does, never clap's usage text.
 
-use std::any::TypeId;
+use std::{any::TypeId, error::Error as _};
 
-use anyhow::Result;
-use clap::{Arg, ArgAction, Command, ValueHint};
+use anyhow::{Error, Result};
+use clap::{
+    Arg, ArgAction, Command, ValueHint,
+    error::{ContextKind, ContextValue, ErrorKind},
+};
 use serde_json::{Map, Value, json};
 
-use crate::{error::usage_invalid, mcp::unknown_argument};
+use crate::{
+    error::{usage_error, usage_invalid},
+    mcp::unknown_argument,
+};
 
 /// A clap command as a tool's input.
 #[derive(Clone, Debug)]
@@ -150,8 +157,9 @@ impl Grammar {
     /// glued as `--<long>=<value>` and each true flag as `--<long>`, then
     /// the fixed words, then `--` and the positionals in their order, so
     /// a value starting with a dash is never read as a flag. An undeclared
-    /// key, a value of the wrong type and a count other than one for an
-    /// argument taking one are refused.
+    /// key, a required argument missing or `null`, a value of the wrong
+    /// type and a count other than one for an argument taking one are
+    /// refused.
     pub fn argv(&self, arguments: &Map<String, Value>) -> Result<Vec<String>> {
         let declared = |key: &String| self.args.iter().any(|arg| &arg.name == key);
 
@@ -220,6 +228,19 @@ impl Grammar {
             }
         }
 
+        // Once the values given are checked, the ones not given.
+        let missing: Vec<&str> = self
+            .args
+            .iter()
+            .filter(|arg| arg.required || arg.one)
+            .filter(|arg| arguments.get(&arg.name).is_none_or(Value::is_null))
+            .map(|arg| arg.name.as_str())
+            .collect();
+
+        if !missing.is_empty() {
+            return Err(usage_invalid(missing_arguments(&missing)));
+        }
+
         // Before the `--`, after which a flag would be a value.
         argv.extend(self.fixed.iter().cloned());
 
@@ -230,6 +251,80 @@ impl Grammar {
         }
 
         Ok(argv)
+    }
+
+    /// The failure of a call whose argv clap refused, coded `usage-invalid`
+    /// and naming the argument as the tool's input does, or clap's message
+    /// as [`usage_error`] words it when it names no property.
+    ///
+    /// [`usage_error`]: crate::error::usage_error
+    pub fn usage_error(&self, err: &clap::Error) -> Error {
+        // clap renders `--page <PAGE>` or `<CARD-ID>`.
+        let property = |rendered: &str| {
+            let rendered = rendered.trim_start_matches('[');
+
+            let arg = match rendered.strip_prefix("--") {
+                Some(flag) => {
+                    let long = flag.split([' ', '=', '[', ']']).next();
+                    self.args.iter().find(|arg| arg.long.as_deref() == long)
+                }
+                None => {
+                    let value = rendered.strip_prefix('<')?.split('>').next()?;
+                    let name = value.to_lowercase();
+                    let mut positionals = self.args.iter().filter(|arg| arg.long.is_none());
+                    positionals.find(|arg| arg.name == name)
+                }
+            };
+
+            arg.map(|arg| arg.name.as_str())
+        };
+
+        let names: Option<Vec<&str>> = match err.get(ContextKind::InvalidArg) {
+            Some(ContextValue::String(arg)) => property(arg).map(|name| vec![name]),
+            Some(ContextValue::Strings(args)) => args.iter().map(|arg| property(arg)).collect(),
+            _ => None,
+        };
+
+        let value = match err.get(ContextKind::InvalidValue) {
+            Some(ContextValue::String(value)) => Some(value.as_str()),
+            _ => None,
+        };
+
+        let invalid = |name: &str, value: &str, reason: Option<String>| match reason {
+            Some(reason) => format!("Invalid value `{value}` for `{name}`: {reason}"),
+            None => format!("Invalid value `{value}` for `{name}`"),
+        };
+
+        let message = match (err.kind(), names.as_deref(), value) {
+            (ErrorKind::MissingRequiredArgument, Some(names @ [_, ..]), _) => {
+                missing_arguments(names)
+            }
+            (ErrorKind::ValueValidation, Some([name]), Some(value)) => {
+                invalid(name, value, err.source().map(ToString::to_string))
+            }
+            (ErrorKind::InvalidValue, Some([name]), Some(value)) => {
+                let possible = match err.get(ContextKind::ValidValue) {
+                    Some(ContextValue::Strings(values)) => values.as_slice(),
+                    _ => &[],
+                };
+                let possible: Vec<String> = possible.iter().map(|v| format!("`{v}`")).collect();
+                let reason = format!("the possible values are {}", possible.join(", "));
+                invalid(name, value, (!possible.is_empty()).then_some(reason))
+            }
+            _ => return usage_error(err),
+        };
+
+        usage_invalid(message)
+    }
+}
+
+/// The message refusing a call that misses the arguments `names`.
+fn missing_arguments(names: &[&str]) -> String {
+    let names: Vec<String> = names.iter().map(|name| format!("`{name}`")).collect();
+
+    match names.as_slice() {
+        [name] => format!("Missing argument {name}"),
+        names => format!("Missing arguments {}", names.join(", ")),
     }
 }
 
@@ -373,7 +468,10 @@ mod tests {
     use clap::{Arg, ArgAction, Command, ValueHint, value_parser};
     use serde_json::{Map, Value, json};
 
-    use crate::mcp::grammar::Grammar;
+    use crate::{
+        error::NoErrorCode,
+        mcp::{ToolResult, grammar::Grammar},
+    };
 
     /// A tree whose `attachment download` mirrors a real one: an option, a
     /// flag the tool fixes, a path, a positional and a repeatable one.
@@ -532,7 +630,9 @@ mod tests {
         let grammar = grammar(&tree);
 
         let argv = grammar
-            .argv(&arguments(json!({ "header": "a b", "message-id": "m" })))
+            .argv(&arguments(
+                json!({ "header": "a b", "message-id": "m", "attachment-id": "3" }),
+            ))
             .unwrap();
 
         assert_eq!(
@@ -543,7 +643,8 @@ mod tests {
                 "--header=a b",
                 "--stdout",
                 "--",
-                "m"
+                "m",
+                "3"
             ]
         );
     }
@@ -676,14 +777,16 @@ mod tests {
         );
 
         let on = grammar
-            .argv(&arguments(json!({ "stdout": true, "mailbox": null })))
+            .argv(&arguments(
+                json!({ "stdout": true, "mailbox": null, "message-id": "m" }),
+            ))
             .unwrap();
         let off = grammar
-            .argv(&arguments(json!({ "stdout": false })))
+            .argv(&arguments(json!({ "stdout": false, "message-id": "m" })))
             .unwrap();
 
-        assert_eq!(on, ["attachment", "download", "--stdout"]);
-        assert_eq!(off, ["attachment", "download"]);
+        assert_eq!(on, ["attachment", "download", "--stdout", "--", "m"]);
+        assert_eq!(off, ["attachment", "download", "--", "m"]);
     }
 
     #[test]
@@ -737,6 +840,110 @@ mod tests {
             crate::error::code_of(&err),
             Some(crate::error::CommonCode::UsageInvalid)
         );
+    }
+
+    /// The failure object a call failing with `err` answers, checking the
+    /// result is an error.
+    fn refusal(err: anyhow::Error) -> Value {
+        let result = serde_json::to_value(ToolResult::error::<NoErrorCode>(err)).unwrap();
+        assert_eq!(result["isError"], true, "{result}");
+
+        let text = result["content"][0]["text"].as_str().unwrap();
+        serde_json::from_str(text).unwrap()
+    }
+
+    #[test]
+    fn a_missing_argument_is_named_as_the_input_names_it() {
+        let tree = tree();
+        let grammar = grammar(&tree);
+
+        let err = grammar
+            .argv(&arguments(json!({ "message-id": "m" })))
+            .unwrap_err();
+        let report = refusal(err);
+        assert_eq!(report["error"], "Missing argument `attachment-id`");
+        assert_eq!(report["code"], "usage-invalid");
+
+        let err = grammar
+            .argv(&arguments(json!({ "message-id": null })))
+            .unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "Missing arguments `message-id`, `attachment-id`"
+        );
+
+        // A refusal clap makes itself reads the same.
+        let err = tree
+            .clone()
+            .try_get_matches_from(["attachment", "download"])
+            .unwrap_err();
+        let report = refusal(grammar.usage_error(&err));
+        assert_eq!(report["error"], "Missing argument `message-id`");
+        assert_eq!(report["code"], "usage-invalid");
+    }
+
+    #[test]
+    fn a_refused_value_names_its_property_and_clap_reason() {
+        let tree = tree();
+        let leaf = tree
+            .find_subcommand("flag")
+            .and_then(|group| group.find_subcommand("add"))
+            .unwrap();
+        let add = Grammar::new(&["flag", "add"], leaf);
+        let download = grammar(&tree);
+
+        for (grammar, arguments_, message) in [
+            (
+                &add,
+                json!({ "page": "x", "id": "1" }),
+                "Invalid value `x` for `page`: invalid digit found in string",
+            ),
+            (
+                &add,
+                json!({ "page": 0, "id": "1" }),
+                "Invalid value `0` for `page`: 0 is not in 1..=4294967295",
+            ),
+            (
+                &download,
+                json!({ "format": "pdf", "message-id": "m", "attachment-id": "1" }),
+                "Invalid value `pdf` for `format`: the possible values are `plain`, `html`",
+            ),
+        ] {
+            let argv = grammar.argv(&arguments(arguments_)).unwrap();
+            let err = tree.clone().try_get_matches_from(&argv).unwrap_err();
+            let report = refusal(grammar.usage_error(&err));
+
+            assert_eq!(report["error"], message);
+            assert_eq!(report["code"], "usage-invalid");
+        }
+    }
+
+    #[test]
+    fn a_refusal_naming_no_property_keeps_clap_message() {
+        let mut tree = Command::new("app").no_binary_name(true).subcommand(
+            Command::new("send")
+                .arg(
+                    Arg::new("draft")
+                        .long("draft")
+                        .action(ArgAction::SetTrue)
+                        .conflicts_with("now"),
+                )
+                .arg(Arg::new("now").long("now").action(ArgAction::SetTrue)),
+        );
+        tree.build();
+
+        let leaf = tree.find_subcommand("send").unwrap();
+        let grammar = Grammar::new(&["send"], leaf);
+        let argv = grammar
+            .argv(&arguments(json!({ "draft": true, "now": true })))
+            .unwrap();
+        let err = tree.clone().try_get_matches_from(&argv).unwrap_err();
+
+        assert_eq!(
+            grammar.usage_error(&err).to_string(),
+            crate::error::usage_error(&err).to_string()
+        );
+        assert_eq!(refusal(grammar.usage_error(&err))["code"], "usage-invalid");
     }
 
     #[test]

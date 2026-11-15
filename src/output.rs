@@ -1,7 +1,8 @@
 //! Output shapes shared by every binary.
 //!
 //! [`Bytes`] carries binary content under JSON, never written raw to
-//! stdout nor decoded lossily. [`Paginated`] carries a listing beside
+//! stdout nor decoded lossily, and [`SavedOutput`] names the file a
+//! command wrote it to instead. [`Paginated`] carries a listing beside
 //! the cursor of its next page, which the `--page-token` argument of
 //! [`PageTokenArg`] takes back.
 //!
@@ -76,6 +77,22 @@ impl JsonSchema for Bytes {
     }
 }
 
+/// What a command saving bytes to a file prints.
+#[derive(Clone, Debug, Serialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct SavedOutput {
+    /// The file written.
+    pub path: String,
+    /// How many bytes were written.
+    pub size: usize,
+}
+
+impl fmt::Display for SavedOutput {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Saved {} bytes to {}", self.size, self.path)
+    }
+}
+
 /// A listing plus the cursor of its next page.
 ///
 /// The cursor is part of the output, a footer line in text and a
@@ -129,6 +146,20 @@ mod tests {
         assert_eq!(
             serde_json::to_value(bytes).unwrap(),
             json!({ "data": "/wBh", "size": 3, "mime": "application/octet-stream" })
+        );
+    }
+
+    #[test]
+    fn a_saved_file_prints_its_path_and_size() {
+        let saved = SavedOutput {
+            path: String::from("/tmp/a.pdf"),
+            size: 42,
+        };
+
+        assert_eq!(saved.to_string(), "Saved 42 bytes to /tmp/a.pdf\n");
+        assert_eq!(
+            serde_json::to_string(&saved).unwrap(),
+            r#"{"path":"/tmp/a.pdf","size":42}"#
         );
     }
 

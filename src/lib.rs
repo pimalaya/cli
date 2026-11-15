@@ -26,7 +26,8 @@
 //! terminal. The fields module lays a record out as aligned `Label: value`
 //! lines, the columns module a list of short rows as aligned columns under
 //! a header, the listing module frames a list with the fields placing it and
-//! the errors of its items, the capability module prints what an account
+//! the errors of its items, the account module prints the accounts and
+//! whether their backends answer, the capability module what an account
 //! serves, the records module a list of wide items the way `git log`
 //! prints commits, and the sanitize module defuses untrusted text before
 //! any of them prints it.
@@ -47,6 +48,8 @@
 //! stops cleanly on.
 //! The build module exposes helpers for build scripts.
 
+#[cfg(feature = "terminal")]
+pub mod account;
 #[cfg(feature = "build")]
 pub mod build;
 #[cfg(feature = "terminal")]

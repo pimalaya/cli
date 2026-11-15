@@ -13,7 +13,9 @@
 //! the prompt, clap's rendering of a mistyped line on a terminal, and the
 //! help in a JSON session, where stdout keeps one JSON value per line.
 //! The session claims stdin ([`claim_stdin`]), so a command reading its
-//! input there is refused.
+//! input there is refused. A line starting another session (`repl`,
+//! `mcp`) or setting a flag the session fixes is refused before the binary
+//! sees it, coded `usage-invalid`.
 //!
 //! [`claim_stdin`]: crate::session::claim_stdin
 
@@ -22,15 +24,18 @@ use std::{
     str,
 };
 
-use anyhow::{Context, Error, Result, anyhow};
+use anyhow::{Context, Error, Result};
 use clap::{Command, CommandFactory, FromArgMatches, Parser, Subcommand};
 
 use crate::{
     clap::args::JsonFlag,
-    error::{ErrorCode, ErrorReport, partial_outcome_of, usage_error},
+    error::{ErrorCode, ErrorReport, partial_outcome_of, usage_error, usage_invalid},
     printer::{Printer, StdoutPrinter},
     session::claim_stdin,
 };
+
+/// The commands starting a session, which a line inside one may not run.
+const SESSIONS: &[&str] = &["repl", "mcp"];
 
 /// The flags every session fixes when it starts: the shared account,
 /// configuration and log flags.
@@ -78,8 +83,10 @@ impl Repl {
     /// `T` is the binary's command tree, parsed from each line without
     /// the binary name, and `C` its failure codes. `execute` runs one
     /// parsed command with the printer of its line, JSON when the session
-    /// or the line asks for it. The loop claims stdin first, and fails
-    /// only when stdin or stdout does.
+    /// or the line asks for it; a `repl` or `mcp` line never reaches it.
+    /// A version `T` carries (`#[command(version)]` on the enum) prints
+    /// after any command. The loop claims stdin first, and fails only when
+    /// stdin or stdout does.
     pub fn run<T: Subcommand, C: ErrorCode>(
         &self,
         mut execute: impl FnMut(&mut StdoutPrinter, T) -> Result<()>,
@@ -108,11 +115,14 @@ impl Repl {
         execute: &mut impl FnMut(&mut P, T) -> Result<()>,
     ) -> Result<()> {
         // NOTE: the flattened `--json` would lend its doc as the about.
-        let mut grammar = Line::<T>::command()
+        let grammar = Line::<T>::command()
             .name(self.bin)
             .bin_name(self.bin)
             .about(None)
             .long_about(None);
+
+        let versioned = grammar.get_version().is_some() || grammar.get_long_version().is_some();
+        let mut grammar = grammar.propagate_version(versioned);
 
         let mut line = Vec::new();
 
@@ -161,7 +171,7 @@ impl Repl {
     /// Sorts one line read off stdin.
     fn step<T: Subcommand>(&self, grammar: &mut Command, line: &[u8]) -> Step<T> {
         let Ok(line) = str::from_utf8(line) else {
-            let err = anyhow!("Cannot read the line: it is not valid UTF-8");
+            let err = usage_invalid("Cannot read the line: it is not valid UTF-8");
             return Step::Fail {
                 err,
                 json: self.json,
@@ -169,7 +179,7 @@ impl Repl {
         };
 
         let Some(words) = shlex::split(line) else {
-            let err = anyhow!("Cannot split the line: a quote is not closed");
+            let err = usage_invalid("Cannot split the line: a quote is not closed");
             return Step::Fail {
                 err,
                 json: self.json,
@@ -190,16 +200,27 @@ impl Repl {
         let parsed = grammar
             .try_get_matches_from_mut(&words)
             .and_then(|matches| {
-                Line::<T>::from_arg_matches(&matches).map_err(|err| err.format(grammar))
+                // The name, whatever alias or prefix the line used.
+                let name = matches.subcommand_name();
+                if name.is_some_and(|name| SESSIONS.contains(&name)) {
+                    return Ok(None);
+                }
+
+                let line = Line::<T>::from_arg_matches(&matches);
+                line.map(Some).map_err(|err| err.format(grammar))
             });
 
         let err = match parsed {
-            Ok(line) => {
+            Ok(Some(line)) => {
                 let json = self.json || line.json.enabled;
                 return Step::Run {
                     cmd: line.cmd,
                     json,
                 };
+            }
+            Ok(None) => {
+                let err = usage_invalid("Cannot start a session inside a session");
+                return Step::Fail { err, json };
             }
             Err(err) => err,
         };
@@ -222,9 +243,9 @@ impl Repl {
 
         match fixed {
             Some(flag) => {
-                let err = anyhow!(
+                let err = usage_invalid(format!(
                     "Cannot set `{flag}` inside a session, start a new session with it instead"
-                );
+                ));
                 Step::Fail { err, json }
             }
             None => Step::Clap { err, json },
@@ -363,6 +384,11 @@ mod tests {
         Fail,
         /// Print a word, then end with a partial outcome.
         Partial,
+        /// Start a session.
+        #[command(alias = "shell")]
+        Repl,
+        /// Serve tools.
+        Mcp,
     }
 
     #[derive(Serialize)]
@@ -408,6 +434,7 @@ mod tests {
                 word(printer, "half")?;
                 Err(PartialOutcome::default().into())
             }
+            TestCommand::Repl | TestCommand::Mcp => word(printer, "nested"),
         };
 
         repl.run_on::<TestCommand, NoErrorCode, _>(&mut streams, &mut printer, &mut execute)
@@ -440,6 +467,7 @@ mod tests {
             error(&values[1]),
             "Cannot split the line: a quote is not closed"
         );
+        assert_eq!(values[1]["code"], "usage-invalid", "{stdout}");
         assert_eq!(values[2], json!({ "word": "d e" }));
         assert_eq!(stderr, "");
     }
@@ -473,6 +501,7 @@ mod tests {
             error(&values[0]),
             "Cannot read the line: it is not valid UTF-8"
         );
+        assert_eq!(values[0]["code"], "usage-invalid", "{stdout}");
         assert_eq!(values[1], json!({ "word": "a" }));
     }
 
@@ -490,10 +519,102 @@ mod tests {
                 "Cannot set `{flag}` inside a session, start a new session with it instead"
             );
             assert_eq!(error(value), message);
+            assert_eq!(value["code"], "usage-invalid", "{value}");
         }
 
         assert_eq!(values[3], json!({ "word": "-a" }));
         assert!(!error(&values[4]).contains("Cannot set"), "{stdout}");
+    }
+
+    #[test]
+    fn a_nested_session_is_refused_before_the_binary_runs_it() {
+        // By its name, an alias and an inferred prefix, the line's own
+        // `--json` kept.
+        let input = b"repl\nmcp\nshell\nmc\nrepl --json\necho a\n";
+        let (stdout, _) = session(true, false, input);
+        let values = values(&stdout);
+
+        assert_eq!(values.len(), 6, "{stdout}");
+
+        for value in &values[..5] {
+            assert_eq!(error(value), "Cannot start a session inside a session");
+            assert_eq!(value["code"], "usage-invalid", "{value}");
+        }
+
+        assert_eq!(values[5], json!({ "word": "a" }));
+
+        let (stdout, _) = session(false, false, b"mcp --json\nmcp -a work\n");
+        let first: Value = serde_json::from_str(stdout.lines().next().unwrap()).unwrap();
+        assert_eq!(error(&first), "Cannot start a session inside a session");
+        assert!(
+            stdout.contains("Cannot set `-a` inside a session"),
+            "{stdout}"
+        );
+
+        let (stdout, _) = session(false, false, b"mcp --help\n");
+        assert!(stdout.contains("Usage: app mcp"), "{stdout}");
+    }
+
+    /// A command tree carrying its version, as a binary's enum does with
+    /// `#[command(version, long_version = long_version!())]`.
+    #[derive(Debug, Subcommand)]
+    #[command(version = "1.2.3", long_version = "v1.2.3 +feature")]
+    enum VersionedCommand {
+        /// Print a word.
+        Echo { word: String },
+    }
+
+    /// Runs a session of [`VersionedCommand`] over `input`, answering its
+    /// stdout and stderr.
+    fn versioned_session(json: bool, input: &[u8]) -> (String, String) {
+        let stdout = Sink::default();
+        let stderr = Sink::default();
+
+        let mut streams = Streams {
+            input,
+            stdout: stdout.clone(),
+            stderr: stderr.clone(),
+            interactive: false,
+        };
+
+        let mut printer = |json| SinkPrinter {
+            sink: stdout.clone(),
+            json,
+        };
+
+        let mut execute = |printer: &mut SinkPrinter, cmd| match cmd {
+            VersionedCommand::Echo { word: w } => word(printer, &w),
+        };
+
+        Repl::new("app", json)
+            .run_on::<VersionedCommand, NoErrorCode, _>(&mut streams, &mut printer, &mut execute)
+            .unwrap();
+
+        (stdout.text(), stderr.text())
+    }
+
+    #[test]
+    fn a_version_line_prints_the_version_the_tree_carries() {
+        let input = b"-V\n--version\necho --version\necho a\n";
+        let (stdout, stderr) = versioned_session(false, input);
+        let lines: Vec<&str> = stdout.lines().collect();
+
+        assert_eq!(lines.len(), 4, "{stdout}");
+        assert_eq!(lines[0], "app 1.2.3");
+        assert_eq!(lines[1], "app v1.2.3 +feature");
+        assert!(lines[2].ends_with(" v1.2.3 +feature"), "{stdout}");
+        assert_eq!(lines[3], "a");
+        assert_eq!(stderr, "");
+
+        let (stdout, stderr) = versioned_session(true, b"--version\n");
+        assert_eq!(stdout, "");
+        assert_eq!(stderr, "app v1.2.3 +feature\n");
+
+        // A tree carrying no version has no version flag.
+        let (stdout, _) = session(true, false, b"--version\n-V\n");
+        for value in values(&stdout) {
+            assert_eq!(value["code"], "usage-invalid", "{stdout}");
+        }
     }
 
     #[test]

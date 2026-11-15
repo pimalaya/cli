@@ -104,6 +104,19 @@ shellexpand SHALL be built with `base-0` alone, without its `tilde` feature, the
 - WHEN the output is printed
 - THEN it reads `Account:    work`, a blank line, `message.move  imap  full  -` and `message.send  -     none  No transport`, and the JSON row of `message.send` has `"backend": null` and `"level": "none"`
 
+### Requirement: The accounts and their checks print alike
+`account::AccountListOutput` SHALL be the output of every binary's `account list`: `{accounts: [{name, default, backends, notBuilt}]}`, `backends` the backends the account declares a block for that the build serves and `notBuilt` the ones it leaves out. Its text SHALL be one line per account as `columns::Columns` prints them with no header row: the name sanitized, the backends then each left-out one followed by ` (not built)`, comma-separated, and `default` on the default account. `account::AccountCheckOutput` SHALL be the output of every binary's `account check`: `{account, backends: [{backend, ok, code, error}]}`, `code` typed by the binary's code enum. Its text SHALL be `fields::Fields` holding `Account`, then one field per backend reading `OK` or `FAIL (<error>)`, the account and the error sanitized. `account::BackendCheck::new` SHALL fold a connection attempt into its row: `code` the outermost coded error of the chain, `error` the whole chain on one line.
+
+#### Scenario: A reduced build
+- GIVEN the default account `work` declaring `imap` and `smtp` blocks, in a build leaving `smtp` out
+- WHEN its list is printed
+- THEN the text reads `work  imap,smtp (not built)  default`, and the JSON row `{"name":"work","default":true,"backends":["imap"],"notBuilt":["smtp"]}`
+
+#### Scenario: A backend refusing the credentials
+- GIVEN the account `work` whose `imap` answers and whose `smtp` fails with `Cannot open the session` caused by `Bad credentials`
+- WHEN its check is printed
+- THEN the text reads `Account:  work`, `imap:     OK` and `smtp:     FAIL (Cannot open the session: Bad credentials)`
+
 ### Requirement: Untrusted text is defused
 `sanitize::text` SHALL replace each control character (C0, DEL, C1) and each bidi embedding, override and isolate of Unicode UAX #9 with U+FFFD, and SHALL borrow text holding none. It SHALL be available with the `terminal` feature.
 

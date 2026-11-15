@@ -23,6 +23,14 @@ Every value a command prints SHALL be a named type implementing `Serialize` and 
 ### Requirement: A write answers a receipt
 A command that writes SHALL print what it acted on, using these keys for these meanings: `id` (the item as it is after the write, `null` when queued or when the backend returns none), `ids` (several items, in the order acted on), `count` (how many items matched), `queued` (`true` when a sync engine applies the write later; no queue id), `response` (a protocol reply as sent), `warnings` (warnings attached to an accepted write), `path` (a file written). A receipt SHALL NOT be a generic map of fields. An action with nothing created or changed SHALL still name its target.
 
+### Requirement: A file written is named with its size
+A command writing to a file what it would otherwise print SHALL print `output::SavedOutput`, `{path, size}`, `path` the file written and `size` the number of bytes written. Its text SHALL read `Saved <size> bytes to <path>`.
+
+#### Scenario: A part saved to a file
+- GIVEN a command writing 42 bytes to `/tmp/a.pdf`
+- WHEN it prints its receipt
+- THEN the text reads `Saved 42 bytes to /tmp/a.pdf` and the JSON `{"path":"/tmp/a.pdf","size":42}`
+
 ### Requirement: One command, one schema
 Every command that prints SHALL register its schema under its command path. A command whose result varies SHALL print one type whose alternatives are told apart by their keys. pimalaya-cli SHALL provide a check over the clap command tree reporting every runnable command (a leaf, or a command whose subcommand is optional) without a key that the binary does not declare silent, and every key naming no runnable command, the failure object's `<bin>-error` and the item error's `<bin>-item-error` aside. The `completion`, `manual` and `json-schema` outputs SHALL be registered by the registry itself, at the root of the command tree. Schemas SHALL describe a value as printed (the serialize contract), so a key the type always prints is required, `null` or not.
 
@@ -32,13 +40,13 @@ Every command that prints SHALL register its schema under its command path. A co
 - THEN the check reports the leaf's command path
 
 ### Requirement: Collections are named and present
-A collection SHALL be printed even when empty, under a plural key naming its rows, never under a generic key. A `get` SHALL print the row its `list` prints.
+A collection SHALL be printed even when empty, under a plural key naming its rows, never under a generic key. A read SHALL print the row its list prints, plus what only a read carries (the item's content), with the item's `id` and `etag`, `etag` `null` where the backend versions no item. A read of one file holding several items, such as an iCalendar file holding a recurring event and its overrides, MAY print their rows as a collection (`events: [...]`) beside the file's `id` and `etag`. A listing MAY carry `total`, the number of items the whole listing holds: the key is optional across the binaries, and paging SHALL NOT depend on it.
 
 ### Requirement: Absent is null
 A binary's own types SHALL print every key, `null` when the value is absent. An empty string SHALL mean the empty value, never an absent one. A provider payload SHALL keep its own omissions.
 
 ### Requirement: Paging resumes
-A command that can stop before the end of a listing SHALL print `nextPage`, `null` once the listing is complete, and SHALL accept that value back through `--page-token`. In text, the cursor SHALL print as a `Next page: <cursor>` line after the listing, one blank line apart when the listing printed anything.
+A command that can stop before the end of a listing SHALL print `nextPage`, `null` once the listing is complete, and SHALL accept that value back through `--page-token`. A ranked search such as `pimdir search` SHALL page the same way, never by a `more` flag. In text, the cursor SHALL print as a `Next page: <cursor>` line after the listing, one blank line apart when the listing printed anything.
 
 ### Requirement: Values and times have one spelling
 Values a binary defines SHALL be kebab-case; values a protocol defines SHALL keep its spelling. An instant a binary resolves SHALL be RFC 3339 in UTC with `Z`; a timestamp read from content SHALL keep its offset; a date SHALL be `YYYY-MM-DD`; a duration SHALL be integer seconds. A binary's own types SHALL NOT print epoch numbers.
@@ -64,7 +72,7 @@ Inside a protocol namespace, a response the server sends before a command's comp
 Inside a protocol namespace, a completion the server refuses (an IMAP `NO` or `BAD`, an SMTP 4xx or 5xx reply, a ManageSieve `NO`, an HTTP 4xx or 5xx carrying the provider's error body) SHALL print as the result and exit 3. A command that gets no completion (a network, TLS or decoding failure, a local error) SHALL print the failure object and exit 1. Outside protocol namespaces, a refusal SHALL be a coded failure.
 
 ### Requirement: Shared nouns keep one shape
-Every binary SHALL print an account row as `{name, default, backends}`, a backend check row as `{backend, ok, code, error}`, a collection row as `{id, name, description, color, default}`, a queued action's row id as `row`, an address as `{name, email}`, and the error of one item as `{id, code, error, sources}`.
+Every binary SHALL print an account row as `{name, default, backends, notBuilt}`, a backend check row as `{backend, ok, code, error}`, a file written as `{path, size}`, a collection row as `{id, name, description, color, default}`, a queued action's row id as `row`, an address as `{name, email}`, and the error of one item as `{id, code, error, sources}`.
 
 ### Requirement: A partial outcome prints its result
 A command that ran to its end with an outcome that is not a full success SHALL print its result and exit with a code of 3 or above, whose meaning the command documents; 2 SHALL stay clap's, for a refused command line. A `check` with a failed backend SHALL print every row and exit 3. A result whose `errors` list is not empty SHALL exit 3. pimalaya-cli SHALL provide a marker error a command returns once its result is printed, which the error report turns into the exit status without printing anything more.

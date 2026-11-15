@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Added `account::AccountListOutput` and `account::AccountRow`, the output of every binary's `account list`: `{accounts: [{name, default, backends, notBuilt}]}`, printed one line per account, the backends a build leaves out marked `(not built)`.
+- Added `account::AccountCheckOutput` and `account::BackendCheck`, the output of every binary's `account check`: `{account, backends: [{backend, ok, code, error}]}`, generic over the binary's code enum, with `BackendCheck::new` folding a connection attempt into its row.
+- Added `output::SavedOutput`, `{path, size}`, what a command writing to a file prints: `Saved <size> bytes to <path>`.
+- Added `mcp::grammar::Grammar::usage_error`, turning clap's refusal of a tool call's argv into a failure naming the argument as the tool's input does: ``Missing argument `card-id` ``, ``Invalid value `x` for `page`: invalid digit found in string``.
+
+### Changed
+
+- Changed the REPL to refuse a `repl` or `mcp` line itself, by name, alias or prefix, with `Cannot start a session inside a session` coded `usage-invalid`, before the binary runs it.
+- Changed the REPL to propagate the version its command tree carries to every command, so a binary declaring `#[command(version, long_version = ...)]` on its command enum answers `-V` and `--version` after any command in a session, as on the command line. A tree carrying no version still refuses them as unknown flags.
+- Changed `mcp::grammar::Grammar::argv` to refuse a required argument missing or `null` as ``Missing argument `<name>` ``, coded `usage-invalid`, instead of leaving clap to answer its usage text.
+- Changed the `mcp` feature to enable clap's `error-context`, which `Grammar::usage_error` reads.
+
+### Fixed
+
+- Fixed the REPL printing a `null` code when it refuses a session flag (`-a`, `-c`, `--log-level`, `--log-file`), a line whose quote is not closed or a line that is not UTF-8: they are coded `usage-invalid`.
+
 ## [0.5.0] - 2026-11-15
 
 ### Added

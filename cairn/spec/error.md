@@ -11,6 +11,14 @@ A failed command prints its error report to stdout, as text or JSON, and exits w
 ### Requirement: Failures carry an optional stable code
 The error report SHALL print a `code` field beside `error`, `sources` and `backtrace`: the code of the outermost coded error in the chain, `null` when the chain holds none. Code values SHALL be kebab-case. The code vocabulary SHALL belong to each binary; pimalaya-cli SHALL provide only the mechanism, and the codes it raises itself, `usage-invalid` alone, which the failure object's schema admits beside the binary's. A binary SHALL have one failure object, and a failure folded into a result SHALL keep its code. A binary reading a code off a typed error deep in the chain SHALL hand it to the report through `error::with_code`, which rebuilds the chain over an innermost coded error with the same messages, and leaves alone a chain already coded, refused as `usage-invalid` or holding a partial outcome.
 
+### Requirement: A code names the domain's noun
+A code about one item or one collection SHALL start with the noun its binary's domain gives it: `message-` and `mailbox-` for mail, `card-` and `addressbook-` for contacts, `item-` and `calendar-` for calendars, as in `<noun>-not-found`. `item-duplicate`, an item whose UID its collection already holds, SHALL be the one such code the domains share.
+
+#### Scenario: An unknown id in two domains
+- GIVEN an id no collection holds
+- WHEN a mail binary reads it as a message and a contacts binary as a card
+- THEN the first fails coded `message-not-found` and the second `card-not-found`
+
 ### Requirement: The failure object has a schema
 The error report SHALL implement `JsonSchema`, describing the failure object with `code` required, nullable and typed by the binary's code enum, from the same declaration its serialization uses.
 
