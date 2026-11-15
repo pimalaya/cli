@@ -111,7 +111,7 @@ mod tests {
         };
 
         let expected = "\
-Account:    work
+Account:  work
 
 message.move  imap  full  -
 message.send  -     none  No transport

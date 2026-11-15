@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
+- Changed `listing::Listing` to print the next page after the items, as `Next page: --page 3` one blank line below them and above the item errors, like `output::Paginated`, instead of a `Next page:` header field; the header now aligns its values two spaces past its longest label (`Account:  work`), and the flag lives in the new field `Listing::next_page`.
 - Changed the terminal spec to state the two capability vocabularies: `account capability` names the unified commands (`message.add`), a sync engine prints the pimdir store's declarations (`mail.message.add`) untranslated.
 - Changed the family contract's noun rule (cairn/spec/error.md): a create naming a collection that already exists fails coded `mailbox-duplicate`, `addressbook-duplicate` or `calendar-duplicate` on every backend, vdir and pimdir included, never succeeding or failing uncoded; `item-duplicate` stays the one item code the domains share.
 - Changed the family contract's paging rule (cairn/spec/output.md): every protocol listing that can stop early prints `nextPage`, the provider's cursor as a string or `null`, and takes it back through `--page-token`; the provider's own key (`nextPageToken`, `@odata.nextLink`) is lifted into `nextPage`, the rest of the payload staying raw.

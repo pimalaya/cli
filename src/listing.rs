@@ -1,20 +1,17 @@
 //! # Listing
 //!
 //! The text frame of every list: the fields placing it (the account, what
-//! is listed, the page it holds and how to reach the next), one blank
-//! line, the items as [`Columns`] with no header row, then the item errors
-//! as [`ItemErrors`] prints them. Nothing prints under the items but those
-//! errors.
+//! is listed, the page it holds) as [`Fields`], one blank line, the items
+//! as [`Columns`] with no header row, then the `Next page:` line reaching
+//! the next page and the item errors as [`ItemErrors`] prints them, each
+//! one blank line apart.
 //!
+//! [`Fields`]: crate::fields::Fields
 //! [`ItemErrors`]: crate::error::ItemErrors
 
 use std::fmt;
 
-use crate::{columns::Columns, error::ItemErrors, sanitize};
-
-/// The longest label of the fields, so values stay in one column on every
-/// page of every list.
-const LABEL_WIDTH: usize = "Next page".len();
+use crate::{columns::Columns, error::ItemErrors, fields::Fields, sanitize};
 
 /// A list printed one item per line under the fields placing it.
 #[derive(Clone, Debug, Default)]
@@ -25,6 +22,9 @@ pub struct Listing<'a> {
     pub items: Columns<'a>,
     /// The line printed in place of the items when there are none.
     pub empty: Option<&'static str>,
+    /// The flag reaching the next page, sanitized, printed after the
+    /// items as `Next page: <flag> <value>`.
+    pub next_page: Option<String>,
     /// The items the command could not list, printed last.
     pub errors: ItemErrors,
 }
@@ -67,7 +67,7 @@ impl<'a> Listing<'a> {
     }
 
     /// Adds the page the `count` items fill, named by their singular and
-    /// plural `nouns`, then the flag reaching the `next` page.
+    /// plural `nouns`, and sets the flag reaching the `next` page.
     pub fn page(&mut self, page: ListingPage, count: usize, nouns: [&str; 2], next: Option<&str>) {
         let count = count as u64;
         let [one, many] = nouns;
@@ -109,20 +109,20 @@ impl<'a> Listing<'a> {
             };
 
             let token = sanitize::text(token);
-            self.header.push(("Next page", format!("{flag} {token}")));
+            self.next_page = Some(format!("{flag} {token}"));
         }
     }
 }
 
 impl fmt::Display for Listing<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let width = self.header.iter().map(|(label, _)| label.chars().count());
-        let width = width.max().unwrap_or_default().max(LABEL_WIDTH) + 3;
+        let mut header = Fields::default();
 
         for (label, value) in &self.header {
-            let label = format!("{label}:");
-            writeln!(f, "{label:<width$}{value}")?;
+            header.push(label, value);
         }
+
+        let mut printed = header.to_string();
 
         let body = match (self.items.rows.is_empty(), self.empty) {
             (false, _) => Some(self.items.to_string()),
@@ -130,15 +130,19 @@ impl fmt::Display for Listing<'_> {
             (true, None) => None,
         };
 
-        if let Some(body) = &body {
-            if !self.header.is_empty() {
-                writeln!(f)?;
+        let next = self.next_page.as_ref().map(|n| format!("Next page: {n}\n"));
+
+        for block in [body, next].into_iter().flatten() {
+            if !printed.is_empty() {
+                printed.push('\n');
             }
 
-            f.write_str(body)?;
+            printed.push_str(&block);
         }
 
-        if self.header.is_empty() && body.is_none() {
+        f.write_str(&printed)?;
+
+        if printed.is_empty() {
             return write!(f, "{}", self.errors);
         }
 
@@ -174,7 +178,7 @@ mod tests {
     }
 
     #[test]
-    fn a_numbered_page_counts_its_items_above_them() {
+    fn a_numbered_page_counts_its_items_and_names_the_next_after_them() {
         let mut first = listing(2);
         first.head("Mailbox", "INBOX");
         first.page(
@@ -185,13 +189,14 @@ mod tests {
         );
 
         let expected = "\
-Account:    work (imap)
-Mailbox:    INBOX
-Page:       2, envelopes 3 to 4
-Next page:  --page 3
+Account:  work (imap)
+Mailbox:  INBOX
+Page:     2, envelopes 3 to 4
 
 0  x
 1  x
+
+Next page: --page 3
 ";
         assert_eq!(first.to_string(), expected);
 
@@ -202,32 +207,59 @@ Next page:  --page 3
             ["envelope", "envelopes"],
             None,
         );
-        assert!(
-            last.to_string()
-                .contains("\nPage:       3, envelope 5, the last\n\n0  x\n")
-        );
+
+        let expected = "\
+Account:  work (imap)
+Page:     3, envelope 5, the last
+
+0  x
+";
+        assert_eq!(last.to_string(), expected);
     }
 
     #[test]
     fn a_token_page_counts_what_it_holds() {
         let mut first = listing(2);
         first.page(ListingPage::Token, 2, ["draft", "drafts"], Some("abc"));
-        assert!(
-            first
-                .to_string()
-                .contains("Page:       2 drafts\nNext page:  --page-token abc\n")
-        );
+
+        let expected = "\
+Account:  work (imap)
+Page:     2 drafts
+
+0  x
+1  x
+
+Next page: --page-token abc
+";
+        assert_eq!(first.to_string(), expected);
 
         let mut empty = listing(0);
         empty.page(ListingPage::Token, 0, ["draft", "drafts"], None);
         assert_eq!(
             empty.to_string(),
-            "Account:    work (imap)\nPage:       empty\n"
+            "Account:  work (imap)\nPage:     empty\n"
         );
     }
 
     #[test]
-    fn a_label_longer_than_next_page_widens_the_column() {
+    fn an_empty_page_still_names_the_next() {
+        let mut empty = listing(0);
+        empty.empty = Some("No draft");
+        empty.page(ListingPage::Token, 0, ["draft", "drafts"], Some("abc"));
+
+        let expected = "\
+Account:  work (imap)
+Page:     empty
+
+No draft
+
+Next page: --page-token abc
+";
+        assert_eq!(empty.to_string(), expected);
+    }
+
+    #[test]
+    fn header_values_align_past_the_longest_label() {
         let mut listing = listing(0);
         listing.head("Addressbook", "contacts");
         listing.empty = Some("No card");
@@ -242,9 +274,14 @@ No card
     }
 
     #[test]
-    fn item_errors_print_last_aligned_among_themselves() {
+    fn item_errors_print_last_after_the_next_page() {
         let mut listing = listing(1);
-        listing.page(ListingPage::All, 1, ["envelope", "envelopes"], None);
+        listing.page(
+            ListingPage::Numbered { page: 1, size: 1 },
+            1,
+            ["envelope", "envelopes"],
+            Some("2"),
+        );
 
         let unreadable = CodedError::new(TestCode::MessageUnreadable, "Cannot decode it");
         listing
@@ -255,10 +292,12 @@ No card
             .push(&ItemError::<TestCode>::new(Some("42"), &anyhow!("Gone")));
 
         let expected = "\
-Account:    work (imap)
-Page:       all, envelope 1
+Account:  work (imap)
+Page:     1, envelope 1
 
 0  x
+
+Next page: --page 2
 
 Error:  -   message-unreadable  Cannot decode it
 Error:  42  -                   Gone
