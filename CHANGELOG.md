@@ -27,6 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Changed
 
 - **BREAKING**: changed `error::EXIT_PARTIAL` and `error::PartialOutcome::default` to 3, and `PartialOutcome::new` to refuse a status below 3, since 2 is clap's for a refused command line. A binary documenting a partial outcome as exit 2 now exits 3, a higher status shifting with it.
+- Changed `error::ErrorReport::eval_coded` and `mcp::exit_on_failure` to exit 2, where they exited 1, for a failure whose chain is coded `usage-invalid`: a command line a binary refuses after clap parsed it (`error::usage_error`) exits as one clap refused. Added `error::failure_status`, the status a failure exits with.
 - Changed `mcp::grammar::Grammar` to type an argument parsed by an integer value parser as `integer`, and an argument taken through `one` as a required scalar instead of an array of one item (an array of one is still accepted).
 - Changed `mcp::grammar::Grammar` to take a lone value where an array is expected as an array of one, so a query given as one string runs.
 - Changed `mcp::grammar::Grammar` to write a long flag of a property mentioned between backquotes in a description as the property's name.

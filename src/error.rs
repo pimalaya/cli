@@ -161,6 +161,16 @@ pub fn partial_outcome_of(err: &Error) -> Option<PartialOutcome> {
         .copied()
 }
 
+/// The status a failure exits with: [`EXIT_USAGE`] when its chain is
+/// coded [`CommonCode::UsageInvalid`], a command line refused after clap
+/// parsed it, [`EXIT_FAILURE`] otherwise.
+pub fn failure_status(err: &Error) -> i32 {
+    match code_of::<CommonCode>(err) {
+        Some(CommonCode::UsageInvalid) => EXIT_USAGE,
+        None => EXIT_FAILURE,
+    }
+}
+
 /// The code of the outermost [`CodedError`] in the chain, if any.
 pub fn code_of<C: ErrorCode>(err: &Error) -> Option<C> {
     err.chain()
@@ -187,7 +197,8 @@ impl ErrorReport {
 
 impl<C: ErrorCode> ErrorReport<C> {
     /// Unwraps a result, or prints the error to the printer, with the
-    /// code of the chain when it carries one, and exits with status 1.
+    /// code of the chain when it carries one, and exits with status 1,
+    /// or 2 for a refused command line (see [`failure_status`]).
     ///
     /// A [`PartialOutcome`] in the chain means the result is already
     /// printed: the process exits with its status, printing nothing more.
@@ -199,8 +210,9 @@ impl<C: ErrorCode> ErrorReport<C> {
                     process::exit(outcome.status());
                 }
 
+                let status = failure_status(&err);
                 let _ = printer.out(Self::from(err));
-                process::exit(EXIT_FAILURE);
+                process::exit(status);
             }
         }
     }
@@ -435,6 +447,18 @@ mod tests {
 
     fn pending() -> Result<(), Error> {
         Err(CodedError::new(TestCode::BodyPending, "not downloaded yet").into())
+    }
+
+    /// A command line refused after clap parsed it exits 2, as clap's own
+    /// refusals do, wherever the usage error sits in the chain; any other
+    /// failure exits 1.
+    #[test]
+    fn a_refused_command_line_exits_two() {
+        let conflict = clap::Error::raw(clap::error::ErrorKind::ArgumentConflict, "both on stdin");
+        let refused = usage_error(&conflict).context("Cannot apply");
+
+        assert_eq!(failure_status(&refused), EXIT_USAGE);
+        assert_eq!(failure_status(&pending().unwrap_err()), EXIT_FAILURE);
     }
 
     #[test]

@@ -37,7 +37,9 @@ use serde::Serialize;
 use serde_json::{Map, Value, json};
 
 use crate::{
-    error::{EXIT_FAILURE, ErrorCode, ErrorReport, NoErrorCode, partial_outcome_of, usage_invalid},
+    error::{
+        ErrorCode, ErrorReport, NoErrorCode, failure_status, partial_outcome_of, usage_invalid,
+    },
     printer::CapturePrinter,
     session::claim_stdin,
 };
@@ -309,8 +311,8 @@ pub fn spawn_stdin_reader<T: Send + 'static>(
 }
 
 /// Unwraps the result of a server, or prints its failure as text on
-/// stderr and exits with status 1, or with the status of a partial
-/// outcome.
+/// stderr and exits with status 1, or 2 for a refused command line, or
+/// with the status of a partial outcome.
 ///
 /// stdout carries protocol messages only, so a server failing before its
 /// loop (resolving its account) or in it reports here rather than
@@ -323,8 +325,9 @@ pub fn exit_on_failure<C: ErrorCode, T>(result: Result<T>) -> T {
                 process::exit(outcome.status());
             }
 
+            let status = failure_status(&err);
             eprint!("{}", ErrorReport::<C>::from(err));
-            process::exit(EXIT_FAILURE);
+            process::exit(status);
         }
     }
 }
