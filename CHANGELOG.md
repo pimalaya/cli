@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-15
+
 ### Added
 
 - Added `clap::parse` and `clap::parse_from`, to call in place of clap's `Parser::parse`: a command line the grammar refuses exits 2 and, with a `--json` word before any `--`, prints the failure object coded `usage-invalid` on stdout instead of clap's text on stderr.
@@ -321,7 +323,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Added the initial toolkit: clap arguments and commands, printer, logger, prompt, spinner, table, account wizards, error reporting, validators and build helpers.
 
-[unreleased]: https://github.com/pimalaya/cli/compare/v0.4.0..HEAD
+[unreleased]: https://github.com/pimalaya/cli/compare/v0.5.0..HEAD
+[0.5.0]: https://github.com/pimalaya/cli/compare/v0.4.0..v0.5.0
 [0.4.0]: https://github.com/pimalaya/cli/compare/v0.3.2..v0.4.0
 [0.3.2]: https://github.com/pimalaya/cli/compare/v0.3.1..v0.3.2
 [0.3.1]: https://github.com/pimalaya/cli/compare/v0.3.0..v0.3.1

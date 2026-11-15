@@ -4,8 +4,8 @@
 
 | Version | Supported      |
 | ------- | -------------- |
-| 0.4.x   | :green_circle: |
-| < 0.4   | :red_circle:   |
+| 0.5.x   | :green_circle: |
+| 0.4.x   | :red_circle:   |
 
 ## Reporting a Vulnerability
 
