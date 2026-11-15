@@ -21,7 +21,7 @@ pimalaya-cli SHALL provide a check returning the registry keys whose schema root
 Every value a command prints SHALL be a named type implementing `Serialize` and `JsonSchema`, its `Display` writing the text form. pimalaya-cli SHALL provide no message wrapper. No field SHALL carry prose the binary composed; text a server or a file provides is data and SHALL travel as a string field.
 
 ### Requirement: A write answers a receipt
-A command that writes SHALL print what it acted on, using these keys for these meanings: `id` (the item as it is after the write, `null` when queued or when the backend returns none), `ids` (several items, in the order acted on), `count` (how many items matched), `queued` (`true` when a sync engine applies the write later; no queue id), `response` (a protocol reply as sent), `warnings` (warnings attached to an accepted write), `path` (a file written). A receipt SHALL NOT be a generic map of fields. An action with nothing created or changed SHALL still name its target.
+A command that writes SHALL print what it acted on, using these keys for these meanings: `id` (the item as it is after the write; for a queued write, the id the store gives the item, its link id, never a placeholder such as `q<id>`, `0` or `""`; `null` only when the backend gives none), `ids` (several items, in the order acted on), `count` (how many items matched), `queued` (`true` when a sync engine applies the write later; no queue id), `response` (a protocol reply as sent), `warnings` (warnings attached to an accepted write), `path` (a file written). A receipt SHALL NOT be a generic map of fields. An action with nothing created or changed SHALL still name its target.
 
 ### Requirement: A file written is named with its size
 A command writing to a file what it would otherwise print SHALL print `output::SavedOutput`, `{path, size}`, `path` the file written and `size` the number of bytes written. Its text SHALL read `Saved <size> bytes to <path>`.
@@ -52,7 +52,7 @@ A command that can stop before the end of a listing SHALL print `nextPage`, `nul
 Values a binary defines SHALL be kebab-case; values a protocol defines SHALL keep its spelling. An instant a binary resolves SHALL be RFC 3339 in UTC with `Z`; a timestamp read from content SHALL keep its offset; a date SHALL be `YYYY-MM-DD`; a duration SHALL be integer seconds. A binary's own types SHALL NOT print epoch numbers.
 
 ### Requirement: Bytes are never raw under JSON
-With JSON output, a command SHALL NOT write raw bytes to stdout and SHALL NOT decode bytes lossily. Binary content SHALL be `{data, size, mime}`, `data` in base64. vCard and iCalendar text SHALL be a string when it is valid UTF-8, base64 otherwise.
+With JSON output, a command SHALL NOT write raw bytes to stdout and SHALL NOT decode bytes lossily. Binary content SHALL be `{data, size, mime}`, `data` in base64. vCard and iCalendar content SHALL be a string beside `encoding`: the text when its bytes are valid UTF-8, `encoding` then `utf-8`, and their base64 (RFC 4648 standard alphabet, padded) otherwise, `encoding` then `base64`.
 
 ### Requirement: Protocol commands are raw-faithful
 A command of a protocol namespace whose payload is JSON SHALL print the server's payload as received, under a designed collection key when it lists, without re-serializing it through a type that adds or drops fields.
