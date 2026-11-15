@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Added to the family contract (cairn/spec/output.md) one `pimdir queue list` row for every binary, pending or parked: `{row, kind, collection, linkId, itemId, producer, queuedAt, attempts, unconfirmed, error}` plus the domain's label key, `subject`, `fullName` or `summary`, `kind` being io-pimdir's action kind as the store holds it.
+
+### Changed
+
+- Changed the family contract's noun rule (cairn/spec/error.md): a create naming a collection that already exists fails coded `mailbox-duplicate`, `addressbook-duplicate` or `calendar-duplicate` on every backend, vdir and pimdir included, never succeeding or failing uncoded; `item-duplicate` stays the one item code the domains share.
+- Changed the family contract's paging rule (cairn/spec/output.md): every protocol listing that can stop early prints `nextPage`, the provider's cursor as a string or `null`, and takes it back through `--page-token`; the provider's own key (`nextPageToken`, `@odata.nextLink`) is lifted into `nextPage`, the rest of the payload staying raw.
+- Changed the family contract's shared collection row (cairn/spec/output.md): `{id, name, description, color, default}` covers address books and calendars, and a mailbox row is `{id, name, role, total, unread}`.
+
 ## [0.5.2] - 2026-11-15
 
 ### Fixed
