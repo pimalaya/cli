@@ -225,7 +225,17 @@ fn collect_runnable(command: &Command, key: String, runnable: &mut BTreeSet<Stri
 /// Collects the alternatives `schema` describes, resolved against the
 /// `root` holding its definitions: itself, or the alternatives of its
 /// reference, `anyOf` or `oneOf`.
+///
+/// A reference with keywords of its own beside it (a newtype variant of
+/// an internally tagged enum, its tag beside the `$ref` of its payload)
+/// is one alternative, read by those keywords.
 fn collect_alternatives<'a>(root: &'a Value, schema: &'a Value, alts: &mut Vec<&'a Value>) {
+    let beside_ref = schema.get("properties").is_some() || schema.get("required").is_some();
+    if beside_ref && schema.get("$ref").is_some() {
+        alts.push(schema);
+        return;
+    }
+
     if let Some(pointer) = schema["$ref"].as_str().and_then(|r| r.strip_prefix('#')) {
         if let Some(def) = root.pointer(pointer) {
             collect_alternatives(root, def, alts);
@@ -588,6 +598,33 @@ mod tests {
                 "test-a: event without an event key",
             ]
         );
+    }
+
+    /// A newtype variant of an internally tagged events enum carries its
+    /// tag beside the `$ref` of its payload, and is an event.
+    #[test]
+    fn a_newtype_event_variant_is_tagged() {
+        #[derive(Serialize, JsonSchema)]
+        struct Timer {
+            seconds: u32,
+        }
+
+        #[derive(Serialize, JsonSchema)]
+        #[serde(tag = "event", rename_all = "kebab-case")]
+        #[allow(dead_code)]
+        enum Event {
+            TimerChanged(Timer),
+            Stopped { at: u32 },
+        }
+
+        let mut registry = registry("1.0.0");
+        registry.schemas.insert("test-c-d".into(), json!({}));
+        registry
+            .events
+            .insert("test-a".into(), output_schema::<Event>());
+
+        let problems = registry.check(&tree(), &["test-repl"]);
+        assert!(problems.is_empty(), "{problems:?}");
     }
 
     #[test]

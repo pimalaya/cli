@@ -40,6 +40,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Fixed the registry check reading an event of a newtype variant (`TimerChanged(TimerOutput)` under `#[serde(tag = "event")]`) as one without an event key: schemars writes its tag beside the `$ref` of its payload, and the check followed the reference alone.
 - Fixed the REPL answering a line it cannot parse with `Error: error: ...` and a `null` code: the failure object now carries clap's message without its prefix and the code `usage-invalid`.
 - Fixed the MCP argument refusals (an undeclared argument, a value of the wrong type, a wrong count) printing a `null` code: they are coded `usage-invalid`.
 - Fixed `manual` writing pages for the first level of subcommands only: every visible command at any depth now gets a page named and titled after its dashed path (`<bin>-envelope-list`), with the whole command in its synopsis, and no `help` subcommand is listed, so each SEE ALSO entry names a page that exists.
