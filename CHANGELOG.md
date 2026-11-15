@@ -6,13 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-15
+
 ### Added
 
 - Added to the family contract (cairn/spec/output.md) one `pimdir queue list` row for every binary, pending or parked: `{row, kind, collection, linkId, itemId, producer, queuedAt, attempts, unconfirmed, error}` plus the domain's label key, `subject`, `fullName` or `summary`, `kind` being io-pimdir's action kind as the store holds it.
 
 ### Changed
 
-- Changed `listing::Listing` to print the next page after the items, as `Next page: --page 3` one blank line below them and above the item errors, like `output::Paginated`, instead of a `Next page:` header field; the header now aligns its values two spaces past its longest label (`Account:  work`), and the flag lives in the new field `Listing::next_page`.
+- **BREAKING**: Changed `listing::Listing` to print the next page after the items, as `Next page: --page 3` one blank line below them and above the item errors, like `output::Paginated`, instead of a `Next page:` header field; the header now aligns its values two spaces past its longest label (`Account:  work`), and the flag lives in the new field `Listing::next_page`.
 - Changed the terminal spec to state the two capability vocabularies: `account capability` names the unified commands (`message.add`), a sync engine prints the pimdir store's declarations (`mail.message.add`) untranslated.
 - Changed the family contract's noun rule (cairn/spec/error.md): a create naming a collection that already exists fails coded `mailbox-duplicate`, `addressbook-duplicate` or `calendar-duplicate` on every backend, vdir and pimdir included, never succeeding or failing uncoded; `item-duplicate` stays the one item code the domains share.
 - Changed the family contract's paging rule (cairn/spec/output.md): every protocol listing that can stop early prints `nextPage`, the provider's cursor as a string or `null`, and takes it back through `--page-token`; the provider's own key (`nextPageToken`, `@odata.nextLink`) is lifted into `nextPage`, the rest of the payload staying raw.
@@ -361,7 +363,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Added the initial toolkit: clap arguments and commands, printer, logger, prompt, spinner, table, account wizards, error reporting, validators and build helpers.
 
-[unreleased]: https://github.com/pimalaya/cli/compare/v0.5.2..HEAD
+[unreleased]: https://github.com/pimalaya/cli/compare/v0.6.0..HEAD
+[0.6.0]: https://github.com/pimalaya/cli/compare/v0.5.2..v0.6.0
 [0.5.2]: https://github.com/pimalaya/cli/compare/v0.5.1..v0.5.2
 [0.5.1]: https://github.com/pimalaya/cli/compare/v0.5.0..v0.5.1
 [0.5.0]: https://github.com/pimalaya/cli/compare/v0.4.0..v0.5.0
