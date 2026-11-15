@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-11-15
+
 ### Fixed
 
 - Fixed the spinner writing colour sequences when stderr is not a terminal (`ESC[38;5;10m✓ESC[39m` in a `2>file`) and under `NO_COLOR` (`ESC[m✓ESC[m`): its `✓` and `✗` lines are plain text off a terminal, and a non-empty `NO_COLOR` turns its colour off on a terminal too.
@@ -347,7 +349,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Added the initial toolkit: clap arguments and commands, printer, logger, prompt, spinner, table, account wizards, error reporting, validators and build helpers.
 
-[unreleased]: https://github.com/pimalaya/cli/compare/v0.5.1..HEAD
+[unreleased]: https://github.com/pimalaya/cli/compare/v0.5.2..HEAD
+[0.5.2]: https://github.com/pimalaya/cli/compare/v0.5.1..v0.5.2
 [0.5.1]: https://github.com/pimalaya/cli/compare/v0.5.0..v0.5.1
 [0.5.0]: https://github.com/pimalaya/cli/compare/v0.4.0..v0.5.0
 [0.4.0]: https://github.com/pimalaya/cli/compare/v0.3.2..v0.4.0
