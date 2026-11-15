@@ -171,6 +171,36 @@ pub fn failure_status(err: &Error) -> i32 {
     }
 }
 
+/// `err` as the report reads it, the code `code` finds in its chain
+/// carried by an innermost [`CodedError`].
+///
+/// A binary may read a code off a typed error deep in the chain (a
+/// protocol refusal, a bare 403 or 429), which [`code_of`] does not see.
+/// `err` is returned unchanged when the chain already carries a code of
+/// `C`, `usage-invalid` or a [`PartialOutcome`], or when `code` finds
+/// none; else it is rebuilt with the same messages, outermost first.
+pub fn with_code<C: ErrorCode>(err: Error, code: impl Fn(&Error) -> Option<C>) -> Error {
+    let kept = code_of::<C>(&err).is_some()
+        || code_of::<CommonCode>(&err).is_some()
+        || partial_outcome_of(&err).is_some();
+    if kept {
+        return err;
+    }
+
+    let Some(code) = code(&err) else {
+        return err;
+    };
+
+    let mut messages: Vec<String> = err.chain().map(ToString::to_string).collect();
+    let innermost = messages.pop().unwrap_or_default();
+    let coded = Error::new(CodedError::new(code, innermost));
+
+    messages
+        .into_iter()
+        .rev()
+        .fold(coded, |err, message| err.context(message))
+}
+
 /// The code of the outermost [`CodedError`] in the chain, if any.
 pub fn code_of<C: ErrorCode>(err: &Error) -> Option<C> {
     err.chain()
@@ -447,6 +477,42 @@ mod tests {
 
     fn pending() -> Result<(), Error> {
         Err(CodedError::new(TestCode::BodyPending, "not downloaded yet").into())
+    }
+
+    /// A code read off a typed error deep in the chain reaches the
+    /// report, every message kept; a chain already coded is left alone.
+    #[test]
+    fn a_code_read_deep_in_the_chain_reaches_the_report() {
+        #[derive(Debug)]
+        struct Refused;
+
+        impl fmt::Display for Refused {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.write_str("403 Forbidden")
+            }
+        }
+
+        impl std::error::Error for Refused {}
+
+        let code = |err: &Error| {
+            err.chain()
+                .any(|cause| cause.is::<Refused>())
+                .then_some(TestCode::BodyPending)
+        };
+
+        let err = Error::new(Refused)
+            .context("Cannot fetch")
+            .context("Cannot sync");
+        let coded = with_code(err, code);
+
+        assert_eq!(code_of(&coded), Some(TestCode::BodyPending));
+        let messages: Vec<String> = coded.chain().map(ToString::to_string).collect();
+        assert_eq!(messages, ["Cannot sync", "Cannot fetch", "403 Forbidden"]);
+
+        let refused = usage_invalid("both on stdin");
+        let kept = with_code(refused, |_| Some(TestCode::BodyPending));
+        assert_eq!(code_of::<TestCode>(&kept), None);
+        assert_eq!(failure_status(&kept), EXIT_USAGE);
     }
 
     /// A command line refused after clap parsed it exits 2, as clap's own

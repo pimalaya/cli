@@ -22,6 +22,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
   It suits a list whose rows carry more than one value of unbounded length, which `columns::Columns` would let wrap.
 
+- Added `error::with_code`, handing the report a code a binary reads off a typed error deep in the chain (a protocol refusal, a bare 403 or 429): the chain is rebuilt, its messages kept, over an innermost coded error. A chain already coded, refused as `usage-invalid` or holding a partial outcome is left alone.
+- Added the `signal` cargo feature and `signal::Shutdown`: once installed, the first SIGINT, SIGTERM or SIGHUP (Ctrl-C or Ctrl-Break on Windows) requests the shutdown a long-lived command polls with `is_requested`, and a second one ends the process with 130. The spinner shares its handler, restoring the terminal when a signal ends the process.
+- Added `printer::StdoutPrinter::streaming`, writing text events to stdout even when it is no terminal, for a long-lived command a status bar pipes.
 - Added `mcp::grammar::Grammar::describe`, replacing the description of an argument whose command-line help does not hold for the tool.
 
 ### Changed

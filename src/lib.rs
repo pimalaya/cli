@@ -42,7 +42,9 @@
 //! requests, its tools derived from that grammar or written by hand, and
 //! the session module keeps the commands they run off stdin.
 //!
-//! The prompt and spinner modules handle interactive input and progress.
+//! The prompt and spinner modules handle interactive input and progress,
+//! and the signal module the termination signals a long-lived command
+//! stops cleanly on.
 //! The build module exposes helpers for build scripts.
 
 #[cfg(feature = "build")]
@@ -79,6 +81,8 @@ pub mod sanitize;
 pub mod session;
 #[cfg(feature = "terminal")]
 pub mod shell;
+#[cfg(feature = "signal")]
+pub mod signal;
 #[cfg(feature = "spinner")]
 pub mod spinner;
 #[cfg(feature = "terminal")]

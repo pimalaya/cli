@@ -32,6 +32,8 @@ use crossterm::{
     terminal::{Clear, ClearType},
 };
 
+use crate::signal;
+
 const FRAMES: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
 const FRAME_INTERVAL: Duration = Duration::from_millis(80);
@@ -126,16 +128,12 @@ static TERMINAL_GUARDS: OnceLock<()> = OnceLock::new();
 
 fn install_terminal_guards() {
     TERMINAL_GUARDS.get_or_init(|| {
-        // SIGINT/SIGTERM/SIGHUP: terminate the process bypassing Drop,
-        // so the render loop never reaches its `cursor::Show` tail.
-        // ctrlc with the `termination` feature catches all three on
-        // Unix and Ctrl-C/Ctrl-Break console events on Windows. The
-        // exit code follows the 128 + signal convention so shells see
-        // the canonical "killed by SIGINT" status (130).
-        let _ = ctrlc::set_handler(|| {
-            restore_terminal();
-            std::process::exit(130);
-        });
+        // NOTE: a signal ending the process bypasses Drop, so the render
+        // loop never reaches its `cursor::Show` tail: the shared handler
+        // restores the terminal first, then exits 130. Under an
+        // installed Shutdown the first signal only requests it, and the
+        // spinner is dropped as the command stops.
+        let _ = signal::install_handler_with(restore_terminal);
 
         // panic = abort skips Drop too. Chain a hook in front of the
         // default so the panic message still reaches stderr after the

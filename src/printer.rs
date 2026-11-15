@@ -51,6 +51,7 @@ pub trait Printer {
 pub struct StdoutPrinter {
     stdout: Stdout,
     json: bool,
+    streaming: bool,
 }
 
 impl StdoutPrinter {
@@ -59,7 +60,16 @@ impl StdoutPrinter {
         Self {
             stdout: stdout(),
             json: json.enabled,
+            streaming: false,
         }
+    }
+
+    /// Turns streaming on, for a long-lived command: text events are
+    /// written to stdout even when it is no terminal, so a status bar
+    /// piping the command reads each one as it comes.
+    pub fn streaming(mut self) -> Self {
+        self.streaming = true;
+        self
     }
 
     fn write_json_line<T: Serialize>(&mut self, data: &T) -> Result<()> {
@@ -98,8 +108,8 @@ impl Printer for StdoutPrinter {
         }
 
         // NOTE: text events go to a terminal only, so a redirected stdout
-        // captures the result alone.
-        if self.stdout.is_terminal() {
+        // captures the result alone, unless the command streams.
+        if self.streaming || self.stdout.is_terminal() {
             write!(self.stdout, "{event}")?;
             self.stdout.flush()?;
         }

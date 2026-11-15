@@ -87,6 +87,14 @@ A command MAY print events before its result, each as soon as the command observ
 - WHEN it runs with `--json`
 - THEN it prints the two items read and an `errors` list holding the third's item error, and the exit code is 3
 
+### Requirement: A long-lived command streams events
+A command that runs until stopped (a watch) or for long (a sync) SHALL print one event line per event while it runs, then exactly one line without `event`: its result, exiting 0, 3 or the binary's own partial status, or the failure object, exiting 1. An error the command recovers from SHALL be an event carrying `code`, `error` and `sources`, as an item error does. On SIGINT or SIGTERM it SHALL stop cleanly and print its result: a watch exits 0, a bounded run its incomplete status. pimalaya-cli SHALL provide `signal::Shutdown`, a cloneable token whose `install` makes the first termination signal request the shutdown rather than end the process, a second one ending it with 130, and the spinner SHALL defer to it. Such a command SHALL write its text events to stdout even when it is no terminal, through `StdoutPrinter::streaming`, since a status bar reads them from a pipe.
+
+#### Scenario: A watch piped to a status bar
+- GIVEN a watch command built on a streaming printer
+- WHEN it runs without `--json`, stdout piped, and receives SIGTERM
+- THEN the pipe received one text line per event as it came, then the result, and the exit code is 0
+
 ### Requirement: Events are described apart
 The registry SHALL hold an `events` map beside `schemas`, keyed by command path, each entry one type whose alternatives are the command's tagged events. `json-schema` SHALL write an entry as `<key>.events.json` with the `$id` `https://pimalaya.org/schemas/<bin>/v<version>/<key>.events.json`. The registry check SHALL cover both maps, report a result root holding `event` and an event alternative without it.
 
