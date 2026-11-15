@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-11-15
+
 ### Added
 
 - Added `account::AccountListOutput` and `account::AccountRow`, the output of every binary's `account list`: `{accounts: [{name, default, backends, notBuilt}]}`, printed one line per account, the backends a build leaves out marked `(not built)`.
@@ -341,7 +343,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Added the initial toolkit: clap arguments and commands, printer, logger, prompt, spinner, table, account wizards, error reporting, validators and build helpers.
 
-[unreleased]: https://github.com/pimalaya/cli/compare/v0.5.0..HEAD
+[unreleased]: https://github.com/pimalaya/cli/compare/v0.5.1..HEAD
+[0.5.1]: https://github.com/pimalaya/cli/compare/v0.5.0..v0.5.1
 [0.5.0]: https://github.com/pimalaya/cli/compare/v0.4.0..v0.5.0
 [0.4.0]: https://github.com/pimalaya/cli/compare/v0.3.2..v0.4.0
 [0.3.2]: https://github.com/pimalaya/cli/compare/v0.3.1..v0.3.2
