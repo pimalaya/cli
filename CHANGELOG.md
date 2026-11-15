@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed the spinner writing colour sequences when stderr is not a terminal (`ESC[38;5;10m✓ESC[39m` in a `2>file`) and under `NO_COLOR` (`ESC[m✓ESC[m`): its `✓` and `✗` lines are plain text off a terminal, and a non-empty `NO_COLOR` turns its colour off on a terminal too.
+
 ## [0.5.1] - 2026-11-15
 
 ### Added
