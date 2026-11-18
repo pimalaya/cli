@@ -136,7 +136,7 @@ shellexpand SHALL be built with `base-0` alone, without its `tilde` feature, the
 - THEN the text reads `Account:  work`, `imap:     OK` and `smtp:     FAIL (Cannot open the session: Bad credentials)`
 
 ### Requirement: Untrusted text is defused
-`sanitize::text` SHALL replace each control character (C0, DEL, C1) and each bidi embedding, override and isolate of Unicode UAX #9 with U+FFFD, and SHALL borrow text holding none. It SHALL be available with the `terminal` feature.
+`sanitize::text` SHALL replace each control character (C0, DEL, C1) and each bidi embedding, override and isolate of Unicode UAX #9 with U+FFFD, and SHALL borrow text holding none. `sanitize::lines` SHALL do the same, keeping the line feed and the tab, for a text printed on several lines. Both SHALL be available with the `terminal` feature.
 
 #### Scenario: A reversed file name
 - GIVEN `invoice\u{202e}fdp.exe`
@@ -181,7 +181,7 @@ pimalaya-cli SHALL NOT re-export an item, its own or a dependency's: a binary SH
 - THEN both find that file, and neither does before it exists
 
 ### Requirement: Every command has a manual page
-`manual` SHALL build the command tree with clap's `help` subcommands disabled, then give every visible command at any depth a page named after its dashed path, as in `<bin>-envelope-list`, its `.TH` title that name and its source the root's name and version, its synopsis the whole command. A name given SHALL be one of those, and every page listed under a page's SEE ALSO SHALL be one the same run can write. The `manual` and `json-schema` help SHALL name no program's command as an example.
+`manual` SHALL build the command tree with clap's `help` subcommands disabled, then give every visible command at any depth a page named after its dashed path, as in `<bin>-envelope-list`, its `.TH` title that name and its source the root's name and version, its synopsis the whole command. A page's VERSION section SHALL name the version once: a long version starting with `v` and a digit, as `long_version!` writes it, SHALL lose that `v` on the page, the page generator writing its own. A name given SHALL be one of those, and every page listed under a page's SEE ALSO SHALL be one the same run can write. The `manual` and `json-schema` help SHALL name no program's command as an example.
 
 #### Scenario: A leaf page
 - GIVEN the tree `test` with the subcommand `sub` holding `list` and `search`
@@ -192,3 +192,24 @@ pimalaya-cli SHALL NOT re-export an item, its own or a dependency's: a binary SH
 - GIVEN the same tree with a hidden subcommand `secret`
 - WHEN `manual --dir <dir>` runs
 - THEN it writes `test.1`, `test-sub.1`, `test-sub-list.1` and `test-sub-search.1`, and `test-sub.1` lists `test-sub-list(1)` and `test-sub-search(1)`, no `help(1)`
+
+#### Scenario: A long version written by long_version!
+- GIVEN the tree `test` whose long version is `v1.2.3 +imap`
+- WHEN `manual test` runs
+- THEN the VERSION section reads `v1.2.3 +imap`, not `vv1.2.3 +imap`
+
+### Requirement: A private file is its owner's
+`file::private_options` SHALL answer `OpenOptions` which, on Unix, create a file with the permissions 0600 whatever the umask and fail on a symbolic link at the path rather than follow it; a file that exists SHALL keep its permissions. Elsewhere they SHALL be plain options. The caller SHALL add its mode of access.
+
+### Requirement: The log file is private
+`Logger::try_init` SHALL open the `--log-file` file in append mode through `file::private_options`, so a log file it creates on Unix is readable by its owner alone and a symbolic link at its path is refused. A log file it cannot open SHALL fail the command with `Cannot open log file <path>`, the OS error as its source.
+
+#### Scenario: A link planted at the log path
+- GIVEN a symbolic link `trace.log` pointing to a file that does not exist
+- WHEN a binary runs with `--log-file trace.log`
+- THEN it fails with an error naming `trace.log`, and the link's target is not created
+
+#### Scenario: A new log file
+- GIVEN a umask of 022 and no file at `trace.log`
+- WHEN a binary runs with `--log-file trace.log`
+- THEN `trace.log` is created with the permissions 0600

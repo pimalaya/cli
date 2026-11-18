@@ -20,7 +20,8 @@
 //! and JSON Schema commands into a binary's parser. The printer and error
 //! modules render command output, events and failures to stdout, the
 //! output module holds the shapes every binary shares (bytes, pages),
-//! and the log module initializes the logger.
+//! the log module initializes the logger, and the file module opens the
+//! files only their owner reads.
 //!
 //! Text output is plain text: no border, no colour, nothing sized to the
 //! terminal. The fields module lays a record out as aligned `Label: value`
@@ -62,6 +63,8 @@ pub mod columns;
 pub mod error;
 #[cfg(feature = "terminal")]
 pub mod fields;
+#[cfg(feature = "terminal")]
+pub mod file;
 #[cfg(feature = "terminal")]
 pub mod listing;
 #[cfg(feature = "terminal")]

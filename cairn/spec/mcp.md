@@ -85,3 +85,11 @@ A tool's `readOnlyHint` SHALL be `true` exactly when the tool, with the argument
 - GIVEN a tool whose `page` argument is parsed by `value_parser!(u32).range(1..)`
 - WHEN a call gives `page` `"x"` and clap refuses its argv
 - THEN the tool result is an error whose failure object is coded `usage-invalid` and reads ``Invalid value `x` for `page`: invalid digit found in string``
+
+### Requirement: A tool's command skips no positional
+`mcp::grammar::Grammar::new` SHALL panic on a command set with clap's `allow_missing_positional`, naming the tool, since its `argv` writes the positionals after `--`, where clap no longer skips a missing positional of such a command. A binary SHALL take an optional value standing before a required positional as a flag instead.
+
+#### Scenario: An optional positional before a required one
+- GIVEN the command `list [CALENDAR] <ID>` set with `allow_missing_positional`
+- WHEN a binary builds its grammar
+- THEN it panics with a message naming `allow_missing_positional`, before any tool is listed

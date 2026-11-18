@@ -39,7 +39,22 @@ impl Grammar {
     /// hidden, help and version arguments are left out, and so are those
     /// taking a path (a path value hint or a `PATH` value name): a tool
     /// reads and writes no local file.
+    ///
+    /// # Panics
+    ///
+    /// Panics when `command` sets `allow_missing_positional`: [`argv`]
+    /// writes the positionals after `--`, where clap no longer skips a
+    /// missing one, so such a tool would refuse or misplace its values.
+    ///
+    /// [`argv`]: Grammar::argv
     pub fn new(path: &[&str], command: &Command) -> Self {
+        assert!(
+            !command.is_allow_missing_positional_set(),
+            "the tool `{}` cannot be built from a command set with \
+             allow_missing_positional, its positionals follow `--`",
+            path.join(" "),
+        );
+
         let args = command
             .get_arguments()
             .filter(|arg| exposes(arg))
@@ -760,6 +775,21 @@ mod tests {
             .unwrap();
         assert_eq!(argv, ["flag", "add", "--", "t", "1", "2"]);
         assert!(tree.clone().try_get_matches_from(&argv).is_ok());
+    }
+
+    /// After `--`, clap gives the first value to the last positional of
+    /// such a command: `[CALENDAR] <ID>` called with both refuses `<ID>`
+    /// given twice.
+    #[test]
+    #[should_panic(expected = "allow_missing_positional")]
+    fn a_command_allowing_a_missing_positional_is_refused() {
+        let mut list = Command::new("list")
+            .allow_missing_positional(true)
+            .arg(Arg::new("calendar").value_name("CALENDAR"))
+            .arg(Arg::new("id").value_name("ID").required(true));
+        list.build();
+
+        Grammar::new(&["list"], &list);
     }
 
     #[test]

@@ -19,7 +19,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 [features]
 default = ["prompt", "terminal", "build", "spinner"]
 prompt = ["dep:inquire", "dep:thiserror"]
-terminal = ["dep:anyhow", "dep:base64-codec", "dep:clap", "dep:clap_complete", "dep:clap_mangen", "dep:dirs", "dep:env_logger", "dep:serde", "dep:schemars", "dep:serde_json", "dep:shellexpand", "dep:unicode-width"]
+terminal = ["dep:anyhow", "dep:base64-codec", "dep:clap", "dep:clap_complete", "dep:clap_mangen", "dep:dirs", "dep:env_logger", "dep:libc", "dep:serde", "dep:schemars", "dep:serde_json", "dep:shellexpand", "dep:unicode-width"]
 build = ["dep:serde", "dep:toml"]
 signal = ["dep:anyhow", "dep:ctrlc"]
 spinner = ["dep:crossterm", "signal"]
@@ -34,7 +34,7 @@ required-features = ["spinner"]
 [dependencies]
 anyhow = { version = "1", default-features = false, features = ["std"], optional = true }
 base64-codec = { version = "0.1", default-features = false, features = ["alloc"], optional = true }
-clap = { version = "4.4", default-features = false, features = ["std", "derive", "help"], optional = true }
+clap = { version = "4.4", default-features = false, features = ["std", "derive", "help", "string"], optional = true }
 clap_complete = { version = "4.4", default-features = false, optional = true }
 clap_mangen = { version = "0.3", default-features = false, optional = true }
 crossterm = { version = "0.29", default-features = false, features = ["bracketed-paste", "derive-more", "events", "windows"], optional = true }
@@ -51,6 +51,9 @@ shlex = { version = "2", default-features = false, optional = true }
 thiserror = { version = "2", default-features = false, features = ["std"], optional = true }
 toml = { version = "1.1", default-features = false, features = ["parse", "serde"], optional = true }
 unicode-width = { version = "0.2", default-features = false, optional = true }
+
+[target.'cfg(unix)'.dependencies]
+libc = { version = "0.2", default-features = false, optional = true }
 
 [dev-dependencies]
 clap = { version = "4.4", default-features = false, features = ["std", "usage"] }

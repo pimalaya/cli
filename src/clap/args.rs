@@ -83,7 +83,8 @@ pub struct LogFlags {
     ///
     /// Useful when interactive prompts (which always write to stderr)
     /// would otherwise be intermixed with log lines. The file is
-    /// opened in append mode and created if it does not exist.
+    /// opened in append mode and created if it does not exist, readable
+    /// by its owner alone on Unix; a symbolic link is refused.
     #[arg(long = "log-file", global = true, name = "log-file")]
     #[arg(value_name = "PATH", value_parser = path_parser)]
     pub file: Option<PathBuf>,

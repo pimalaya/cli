@@ -20,6 +20,7 @@
 
 use std::{
     backtrace::{Backtrace, BacktraceStatus},
+    borrow::Cow,
     fmt, process,
 };
 
@@ -208,8 +209,15 @@ pub fn code_of<C: ErrorCode>(err: &Error) -> Option<C> {
         .map(|coded| coded.code.clone())
 }
 
+/// The text hint naming `--json` when the text report replaced characters.
+const JSON_HINT: &str = "Run with --json to see the exact characters of the error";
+
 /// Wraps an [`anyhow::Error`] to render it, with its source chain,
 /// backtrace and code, as text or JSON.
+///
+/// The text sanitizes the message and each source line by line
+/// ([`sanitize::lines`]), naming `--json` when it replaced a character;
+/// the JSON keeps them exact.
 pub struct ErrorReport<C = NoErrorCode> {
     error: Error,
     code: Option<ReportCode<C>>,
@@ -286,10 +294,16 @@ impl<C: ErrorCode> From<Error> for ErrorReport<C> {
 
 impl<C: ErrorCode> fmt::Display for ErrorReport<C> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Error: {}", self.error)?;
+        let error = self.error.to_string();
+        let error = sanitize::lines(&error);
+        let mut defused = matches!(error, Cow::Owned(_));
+        write!(f, "Error: {error}")?;
 
         let mut header_printed = false;
         for err in self.sources() {
+            let err = sanitize::lines(&err);
+            defused |= matches!(err, Cow::Owned(_));
+
             if !header_printed {
                 writeln!(f)?;
                 writeln!(f)?;
@@ -315,6 +329,17 @@ impl<C: ErrorCode> fmt::Display for ErrorReport<C> {
             write!(f, " - {suggestion}")?;
         }
 
+        if defused {
+            if self.suggestions().is_none() {
+                writeln!(f)?;
+                writeln!(f)?;
+                write!(f, "Suggestions:")?;
+            }
+
+            writeln!(f)?;
+            write!(f, " - {JSON_HINT}")?;
+        }
+
         writeln!(f)
     }
 }
@@ -333,7 +358,7 @@ impl<C: ErrorCode> Serialize for ErrorReport<C> {
 }
 
 impl<C: ErrorCode> JsonSchema for ErrorReport<C> {
-    fn schema_name() -> std::borrow::Cow<'static, str> {
+    fn schema_name() -> Cow<'static, str> {
         "ErrorReport".into()
     }
 
@@ -657,5 +682,23 @@ mod tests {
             "34  body-pending  Cannot read message 34"
         );
         assert_eq!(uncoded.to_string(), "-  -  Cannot read\u{fffd}line");
+    }
+
+    #[test]
+    fn a_text_report_defuses_the_chain_and_keeps_its_lines() {
+        let err = anyhow!("Expected `=`\nat line 2\x1b]52;c;aGk=\x07")
+            .context("Cannot read message nope\x1b[31mRED\x07");
+        let report = ErrorReport::<NoErrorCode>::from(err).to_string();
+
+        assert!(!report.contains(['\x1b', '\x07']), "{report:?}");
+        assert!(
+            report.starts_with("Error: Cannot read message nope\u{fffd}[31mRED\u{fffd}"),
+            "{report:?}"
+        );
+        assert!(
+            report.contains(" - Expected `=`\nat line 2\u{fffd}]52;c;aGk=\u{fffd}"),
+            "{report:?}"
+        );
+        assert!(report.contains("--json"), "{report:?}");
     }
 }

@@ -428,6 +428,7 @@ dependencies = [
  "dirs",
  "env_logger",
  "inquire",
+ "libc",
  "log",
  "schemars",
  "serde",

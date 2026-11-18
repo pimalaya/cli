@@ -116,10 +116,26 @@ fn without_help_subcommand(command: &mut Command) {
 /// `command` comes from a built tree, whose display names spell that path.
 fn collect_pages(command: &Command, pages: &mut Vec<(String, Command)>) {
     let name = command.get_display_name().unwrap_or(command.get_name());
-    pages.push((name.to_owned(), command.clone()));
+    pages.push((name.to_owned(), without_version_prefix(command.clone())));
 
     for subcommand in command.get_subcommands().filter(|cmd| !cmd.is_hide_set()) {
         collect_pages(subcommand, pages);
+    }
+}
+
+/// Drops the `v` leading the long version of `command`, as in
+/// `v1.2.3`, since the VERSION section the page generator writes
+/// prefixes its own.
+fn without_version_prefix(command: Command) -> Command {
+    let version = command
+        .get_long_version()
+        .and_then(|version| version.strip_prefix('v'))
+        .filter(|version| version.starts_with(|c: char| c.is_ascii_digit()))
+        .map(ToOwned::to_owned);
+
+    match version {
+        Some(version) => command.long_version(version),
+        None => command,
     }
 }
 
@@ -215,6 +231,22 @@ mod tests {
 
         assert!(page.contains(".TH test-sub-list 1"), "{page}");
         assert!(page.contains("\\fBtest sub list\\fR"), "{page}");
+    }
+
+    #[test]
+    fn the_version_section_reads_the_long_version_once_prefixed() {
+        let cmd = ManualCommand {
+            cmds: vec!["test".into()],
+            dir: None,
+        };
+
+        let tree = tree().long_version("v1.2.3 +imap\ngit: abc");
+        let mut printer = TestPrinter::default();
+        cmd.execute(&mut printer, tree).unwrap();
+        let page = printer.output;
+
+        assert!(page.contains(".SH VERSION\nv1.2.3 +imap"), "{page}");
+        assert!(!page.contains("vv1.2.3"), "{page}");
     }
 
     #[test]

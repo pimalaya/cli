@@ -5,7 +5,8 @@
 //! the clipboard via OSC 52, hiding text, clearing the screen) or reorder
 //! what is displayed with bidi overrides (`invoice\u{202e}fdp.exe` reads
 //! as `invoiceexe.pdf`). [`text`] defuses such a string before it goes
-//! into a field, a column or any other text form.
+//! into a field, a column or any other text form, [`lines`] one keeping
+//! its lines.
 
 use std::borrow::Cow;
 
@@ -15,7 +16,20 @@ use std::borrow::Cow;
 /// embeddings, overrides and isolates of Unicode UAX #9. Clean text is
 /// borrowed.
 pub fn text(s: &str) -> Cow<'_, str> {
-    if !s.chars().any(is_unsafe) {
+    replace(s, is_unsafe)
+}
+
+/// Replaces the control and bidi characters of `s` with U+FFFD as
+/// [`text`] does, keeping the line feed and the tab.
+///
+/// For a multi-line text, such as an error message quoting a file. Clean
+/// text is borrowed.
+pub fn lines(s: &str) -> Cow<'_, str> {
+    replace(s, |c| !matches!(c, '\n' | '\t') && is_unsafe(c))
+}
+
+fn replace(s: &str, is_unsafe: impl Fn(char) -> bool) -> Cow<'_, str> {
+    if !s.chars().any(&is_unsafe) {
         return Cow::Borrowed(s);
     }
 
@@ -54,6 +68,14 @@ mod tests {
         assert_eq!(
             sanitize::text("a\x1b[2Jb\x07c\x7fd\u{9b}e\tf"),
             "a�[2Jb�c�d�e�f"
+        );
+    }
+
+    #[test]
+    fn sanitize_lines_keeps_line_feeds_and_tabs() {
+        assert_eq!(
+            sanitize::lines("a\n\tb\r\x1b[2J\u{202e}c"),
+            "a\n\tb\u{fffd}\u{fffd}[2J\u{fffd}c"
         );
     }
 

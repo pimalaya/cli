@@ -42,3 +42,11 @@ pimalaya-cli SHALL provide `error::ItemError<C>`, serialized as `{id, code, erro
 - GIVEN an error coded `message-unreadable` under the context `Cannot read message 34`
 - WHEN `ItemError::new(Some("34"), &err)` is serialized
 - THEN it prints `{"id":"34","code":"message-unreadable","error":"Cannot read message 34","sources":[…]}`, and its `Display` reads `34  message-unreadable  Cannot read message 34`
+
+### Requirement: The text report is defused
+The text form of the error report SHALL run its message and each of its sources through `sanitize::lines`, so no control or bidi character of the chain reaches the terminal while its lines stay apart. When it replaced a character, its suggestions SHALL end with `Run with --json to see the exact characters of the error`. The JSON form SHALL keep the message and the sources exact.
+
+#### Scenario: An id carrying escape sequences
+- GIVEN the error `Cannot read message nope<ESC>[31mRED<BEL>` caused by a source on two lines, `Expected =` then `at line 2<ESC>]52;c;aGk=<BEL>`
+- WHEN its text report is printed
+- THEN it reads `Error: Cannot read message nope�[31mRED�`, and under `Caused by:` the source on its two lines with U+FFFD in place of ESC and BEL, the suggestions naming `--json`

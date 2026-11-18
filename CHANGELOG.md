@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Added `sanitize::lines`, replacing the control and bidi characters `sanitize::text` replaces while keeping the line feed and the tab, for a text printed on several lines.
+- Added `file::private_options`, `OpenOptions` creating a file at 0600 and refusing a symbolic link (`O_NOFOLLOW`) on Unix, plain elsewhere, for the files only their owner should read (a cache, a draft).
+
+### Changed
+
+- Changed `mcp::grammar::Grammar::new` to panic on a command set with `allow_missing_positional`, naming the tool: its argv writes the positionals after `--`, where clap no longer skips a missing one, so such a tool refused or misplaced its values on every call.
+
+### Fixed
+
+- Fixed the text error report writing the control characters of its chain raw to the terminal (`Error: nope\033[31mRED\007` drove it): the message and each source are sanitized line by line, and the suggestions name `--json`, which keeps the exact characters, when a character was replaced.
+- Fixed `--log-file` creating the file under the umask (0644) and following a symbolic link at its path: on Unix the file is created at 0600 and a link is refused. A log file that cannot be opened is reported as `Cannot open log file <path>`, where only the OS error was printed.
+- Fixed the generated manual pages printing `vv<version>` in their VERSION section: the `v` leading `long_version!` is dropped on the page, clap_mangen writing its own.
+
 ## [0.6.0] - 2026-11-15
 
 ### Added
