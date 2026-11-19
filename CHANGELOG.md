@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-11-19
+
 ### Added
 
 - Added the `duration` feature and its `duration::friendly`, printing whole seconds in jiff's friendly compact form balanced up to days of 24 hours (`2d 4h 30m`, `0s` when empty, hours past what a jiff span holds), the formatter ortie and comodoro each copied. jiff is a dependency of that feature only.
@@ -396,7 +398,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Added the initial toolkit: clap arguments and commands, printer, logger, prompt, spinner, table, account wizards, error reporting, validators and build helpers.
 
-[Unreleased]: https://github.com/pimalaya/himalaya/compare/v0.7.0..HEAD
+[Unreleased]: https://github.com/pimalaya/himalaya/compare/v0.7.1..HEAD
+[0.7.1]: https://github.com/pimalaya/himalaya/compare/v0.7.0..v0.7.1
 [0.7.0]: https://github.com/pimalaya/himalaya/compare/v0.6.1..v0.7.0
 [0.6.1]: https://github.com/pimalaya/cli/compare/v0.6.0..v0.6.1
 [0.6.0]: https://github.com/pimalaya/cli/compare/v0.5.2..v0.6.0
