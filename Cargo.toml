@@ -23,6 +23,7 @@ terminal = ["dep:anyhow", "dep:base64-codec", "dep:clap", "dep:clap_complete", "
 build = ["dep:serde", "dep:toml"]
 signal = ["dep:anyhow", "dep:ctrlc"]
 spinner = ["dep:crossterm", "signal"]
+duration = ["dep:jiff"]
 repl = ["terminal", "dep:shlex"]
 mcp = ["terminal", "clap/error-context"]
 
@@ -42,6 +43,7 @@ ctrlc = { version = "3", default-features = false, features = ["termination"], o
 dirs = { version = "7", default-features = false, optional = true }
 env_logger = { version = "0.11", default-features = false, optional = true }
 inquire = { version = "0.9", default-features = false, features = ["crossterm", "fuzzy", "macros", "one-liners"], optional = true }
+jiff = { version = "1", default-features = false, features = ["std"], optional = true }
 log = { version = "0.4", default-features = false }
 schemars = { version = "1", default-features = false, features = ["derive", "std"], optional = true }
 serde = { version = "1", default-features = false, features = ["derive", "std"], optional = true }

@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Added the `duration` feature and its `duration::friendly`, printing whole seconds in jiff's friendly compact form balanced up to days of 24 hours (`2d 4h 30m`, `0s` when empty, hours past what a jiff span holds), the formatter ortie and comodoro each copied. jiff is a dependency of that feature only.
+
 ## [0.7.0] - 2026-11-19
 
 ### Added

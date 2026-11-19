@@ -47,6 +47,7 @@
 //! The prompt and spinner modules handle interactive input and progress,
 //! and the signal module the termination signals a long-lived command
 //! stops cleanly on.
+//! The duration module prints a count of seconds for a human.
 //! The build module exposes helpers for build scripts.
 
 #[cfg(feature = "terminal")]
@@ -59,6 +60,8 @@ pub mod capability;
 pub mod clap;
 #[cfg(feature = "terminal")]
 pub mod columns;
+#[cfg(feature = "duration")]
+pub mod duration;
 #[cfg(feature = "terminal")]
 pub mod error;
 #[cfg(feature = "terminal")]
