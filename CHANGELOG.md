@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-19
+
 ### Added
 
 - Added `CommonCode::RequestOrigin`, serialized `request-origin`, to the family's shared codes, and `error::request_origin`, the failure a raw `request` command raises for a URL off its API's origin (exit 1), so himalaya, cardamum and calendula code that refusal alike.
@@ -390,7 +392,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Added the initial toolkit: clap arguments and commands, printer, logger, prompt, spinner, table, account wizards, error reporting, validators and build helpers.
 
-[unreleased]: https://github.com/pimalaya/cli/compare/v0.6.1..HEAD
+[Unreleased]: https://github.com/pimalaya/himalaya/compare/v0.7.0..HEAD
+[0.7.0]: https://github.com/pimalaya/himalaya/compare/v0.6.1..v0.7.0
 [0.6.1]: https://github.com/pimalaya/cli/compare/v0.6.0..v0.6.1
 [0.6.0]: https://github.com/pimalaya/cli/compare/v0.5.2..v0.6.0
 [0.5.2]: https://github.com/pimalaya/cli/compare/v0.5.1..v0.5.2
