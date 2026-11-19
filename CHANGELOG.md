@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Added `CommonCode::RequestOrigin`, serialized `request-origin`, to the family's shared codes, and `error::request_origin`, the failure a raw `request` command raises for a URL off its API's origin (exit 1), so himalaya, cardamum and calendula code that refusal alike.
+- Added `sanitize::path_component`, the pimdir STORAGE §18 rule of io-pimdir's `security::path_component` (separators, control and bidi formatting characters replaced by `_`, an empty, `.` or `..` name as underscores), for a binary naming a file without io-pimdir.
+- Added `handle`, the row under the store's identity, to the family contract's shared queue row and to the receipt keys (cairn/spec/output.md), as calendula and cardamum print it.
+
+### Changed
+
+- **BREAKING**: Changed `error::CommonCode` to `#[non_exhaustive]` as it gains `RequestOrigin`, a crate matching it exhaustively needing a wildcard arm; no family binary does.
+
 ## [0.6.1] - 2026-11-18
 
 ### Added

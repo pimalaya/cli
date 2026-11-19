@@ -46,14 +46,18 @@ impl<T: Clone + fmt::Debug + Serialize + JsonSchema + Send + Sync + 'static> Err
 #[derive(Clone, Copy, Debug, Serialize, JsonSchema)]
 pub enum NoErrorCode {}
 
-/// The codes pimalaya-cli raises itself, beside every binary's own
-/// vocabulary.
+/// The codes the family shares, beside every binary's own vocabulary:
+/// pimalaya-cli raises `usage-invalid` itself, a binary raises the others.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
+#[non_exhaustive]
 pub enum CommonCode {
     /// The command line does not match the grammar: an unknown flag or
     /// command, a missing argument, a bad value.
     UsageInvalid,
+    /// A raw protocol request names a URL off the origin of the API the
+    /// account's token is for, refused before anything is sent.
+    RequestOrigin,
 }
 
 /// The failure of a command line the grammar refuses, coded
@@ -69,6 +73,21 @@ pub fn usage_error(err: &clap::Error) -> Error {
 /// arguments refused before clap sees them.
 pub(crate) fn usage_invalid(message: impl Into<String>) -> Error {
     CodedError::new(CommonCode::UsageInvalid, message).into()
+}
+
+/// The refusal of a raw request to `url`, coded
+/// [`CommonCode::RequestOrigin`]: its origin is not `api`, the origin of
+/// the API whose bearer token the request would carry.
+///
+/// Both are origins as a URL serializes them, `https://host[:port]`. A
+/// binary raises it before sending anything, so the token never leaves
+/// for another host.
+pub fn request_origin(url: &str, api: &str) -> Error {
+    let message = format!(
+        "Cannot send a request to `{url}`: it is off the API origin `{api}`, \
+         which alone receives the account's token"
+    );
+    CodedError::new(CommonCode::RequestOrigin, message).into()
 }
 
 /// A failure carrying an [`ErrorCode`], anywhere in an error chain.
@@ -168,7 +187,7 @@ pub fn partial_outcome_of(err: &Error) -> Option<PartialOutcome> {
 pub fn failure_status(err: &Error) -> i32 {
     match code_of::<CommonCode>(err) {
         Some(CommonCode::UsageInvalid) => EXIT_USAGE,
-        None => EXIT_FAILURE,
+        Some(CommonCode::RequestOrigin) | None => EXIT_FAILURE,
     }
 }
 
@@ -178,7 +197,7 @@ pub fn failure_status(err: &Error) -> i32 {
 /// A binary may read a code off a typed error deep in the chain (a
 /// protocol refusal, a bare 403 or 429), which [`code_of`] does not see.
 /// `err` is returned unchanged when the chain already carries a code of
-/// `C`, `usage-invalid` or a [`PartialOutcome`], or when `code` finds
+/// `C` or of [`CommonCode`], or a [`PartialOutcome`], or when `code` finds
 /// none; else it is rebuilt with the same messages, outermost first.
 pub fn with_code<C: ErrorCode>(err: Error, code: impl Fn(&Error) -> Option<C>) -> Error {
     let kept = code_of::<C>(&err).is_some()
@@ -475,8 +494,10 @@ enum ReportCode<C> {
 #[derive(Serialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct ErrorReportOutput<C> {
-    /// The stable code of the failure: the binary's own, `usage-invalid`
-    /// for a command line the grammar refuses, `null` when none was given.
+    /// The stable code of the failure: the binary's own, or one the family
+    /// shares (`usage-invalid` for a command line the grammar refuses,
+    /// `request-origin` for a request off its API), `null` when none was
+    /// given.
     code: Option<ReportCode<C>>,
     /// The outermost error message.
     error: String,
@@ -615,6 +636,30 @@ mod tests {
     fn the_schema_admits_the_common_codes() {
         let schema = output_schema::<ErrorReport<TestCode>>().to_string();
         assert!(schema.contains("usage-invalid"), "{schema}");
+        assert!(schema.contains("request-origin"), "{schema}");
+    }
+
+    /// A request off the API is refused coded `request-origin` beside the
+    /// binary's own vocabulary, exits 1 and keeps its code under context;
+    /// a binary's later read of a code leaves it alone.
+    #[test]
+    fn a_request_off_the_api_is_coded_request_origin() {
+        let api = "https://graph.microsoft.com";
+        let err = request_origin("https://evil.example", api).context("Cannot send request");
+
+        assert_eq!(failure_status(&err), EXIT_FAILURE);
+        let err = with_code(err, |_| Some(TestCode::BodyPending));
+        assert_eq!(code_of::<TestCode>(&err), None);
+
+        let json = serde_json::to_value(ErrorReport::<TestCode>::from(err)).unwrap();
+        assert_eq!(json["code"], "request-origin", "{json}");
+        assert_eq!(json["error"], "Cannot send request");
+        assert_eq!(
+            json["sources"][0],
+            "Cannot send a request to `https://evil.example`: it is off the API \
+             origin `https://graph.microsoft.com`, which alone receives the \
+             account's token"
+        );
     }
 
     #[test]

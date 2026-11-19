@@ -1,4 +1,4 @@
-//! Untrusted text made safe to print on a terminal.
+//! Untrusted text made safe to print on a terminal or to name a file.
 //!
 //! A text output prints its values as given, so a string from a message
 //! or a server could drive the terminal with escape sequences (rewriting
@@ -6,7 +6,7 @@
 //! what is displayed with bidi overrides (`invoice\u{202e}fdp.exe` reads
 //! as `invoiceexe.pdf`). [`text`] defuses such a string before it goes
 //! into a field, a column or any other text form, [`lines`] one keeping
-//! its lines.
+//! its lines, and [`path_component`] a name before it names a file.
 
 use std::borrow::Cow;
 
@@ -26,6 +26,41 @@ pub fn text(s: &str) -> Cow<'_, str> {
 /// text is borrowed.
 pub fn lines(s: &str) -> Cow<'_, str> {
     replace(s, |c| !matches!(c, '\n' | '\t') && is_unsafe(c))
+}
+
+/// The bidirectional formatting characters pimdir STORAGE §18 names.
+const PATH_BIDI: [char; 12] = [
+    '\u{061C}', '\u{200E}', '\u{200F}', '\u{202A}', '\u{202B}', '\u{202C}', '\u{202D}', '\u{202E}',
+    '\u{2066}', '\u{2067}', '\u{2068}', '\u{2069}',
+];
+
+/// `name` as one path component, by the rule of pimdir STORAGE §18 that
+/// io-pimdir's `security::path_component` applies: every path separator
+/// (`/` and `\`), NUL, control character and bidirectional formatting
+/// character replaced by `_`, and a name that would be empty, `.` or `..`
+/// written as underscores.
+///
+/// The answer names no other directory, so a path joined from a directory
+/// and it stays in that directory, and no bidi override disguises its
+/// extension. For a name a server or a message gave, such as an
+/// attachment's file name, in a binary built without io-pimdir.
+pub fn path_component(name: &str) -> String {
+    let mut out: String = name
+        .chars()
+        .map(|c| match c {
+            '/' | '\\' => '_',
+            c if c.is_control() || PATH_BIDI.contains(&c) => '_',
+            c => c,
+        })
+        .collect();
+
+    match out.as_str() {
+        "" => out.push('_'),
+        "." | ".." => out = "_".repeat(out.len()),
+        _ => (),
+    }
+
+    out
 }
 
 fn replace(s: &str, is_unsafe: impl Fn(char) -> bool) -> Cow<'_, str> {
@@ -83,5 +118,29 @@ mod tests {
     fn sanitize_replaces_bidi_characters() {
         assert_eq!(sanitize::text("invoice\u{202e}fdp.exe"), "invoice�fdp.exe");
         assert_eq!(sanitize::text("a\u{2066}b\u{2069}c"), "a�b�c");
+    }
+
+    /// The cases of io-pimdir's `security::path_component`, one answer for
+    /// each, so a binary sharing this rule names a file as the store does.
+    #[test]
+    fn a_path_component_stays_one_component() {
+        let cases = [
+            ("report.pdf", "report.pdf"),
+            ("../../etc/passwd", ".._.._etc_passwd"),
+            ("..", "__"),
+            (".", "_"),
+            ("", "_"),
+            ("...", "..."),
+            ("a\\b", "a_b"),
+            ("nul\0byte", "nul_byte"),
+            ("tab\there\u{7f}\u{85}", "tab_here__"),
+            ("invoice\u{202E}fdp.exe", "invoice_fdp.exe"),
+            ("\u{2066}x\u{2069}\u{200E}\u{061C}", "_x___"),
+            ("Résumé 2026", "Résumé 2026"),
+        ];
+
+        for (name, component) in cases {
+            assert_eq!(sanitize::path_component(name), component, "{name:?}");
+        }
     }
 }

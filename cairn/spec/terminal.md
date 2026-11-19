@@ -136,12 +136,17 @@ shellexpand SHALL be built with `base-0` alone, without its `tilde` feature, the
 - THEN the text reads `Account:  work`, `imap:     OK` and `smtp:     FAIL (Cannot open the session: Bad credentials)`
 
 ### Requirement: Untrusted text is defused
-`sanitize::text` SHALL replace each control character (C0, DEL, C1) and each bidi embedding, override and isolate of Unicode UAX #9 with U+FFFD, and SHALL borrow text holding none. `sanitize::lines` SHALL do the same, keeping the line feed and the tab, for a text printed on several lines. Both SHALL be available with the `terminal` feature.
+`sanitize::text` SHALL replace each control character (C0, DEL, C1) and each bidi embedding, override and isolate of Unicode UAX #9 with U+FFFD, and SHALL borrow text holding none. `sanitize::lines` SHALL do the same, keeping the line feed and the tab, for a text printed on several lines. `sanitize::path_component` SHALL turn a name into one path component by the rule of pimdir STORAGE §18, as io-pimdir's `security::path_component` does: every `/` and `\`, NUL, control character and bidirectional formatting character (U+061C, U+200E, U+200F, U+202A to U+202E, U+2066 to U+2069) replaced by `_`, and an empty name written `_`, `.` and `..` written `_` and `__`. All three SHALL be available with the `terminal` feature.
 
 #### Scenario: A reversed file name
 - GIVEN `invoice\u{202e}fdp.exe`
 - WHEN it is sanitized
 - THEN it reads `invoice�fdp.exe`
+
+#### Scenario: An attachment name climbing out of its directory
+- GIVEN the attachment names `../../etc/passwd`, `..` and `invoice\u{202e}fdp.exe`
+- WHEN each goes through `sanitize::path_component`
+- THEN they read `.._.._etc_passwd`, `__` and `invoice_fdp.exe`
 
 ### Requirement: Items are reached where they are defined
 pimalaya-cli SHALL NOT re-export an item, its own or a dependency's: a binary SHALL import each item at the path of the module defining it.
