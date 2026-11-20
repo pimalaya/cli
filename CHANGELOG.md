@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-20
+
 ### Added
 
 - Added `clap::meet_bare_invocation`, answering a binary run without a command: under `--json` a failure coded `usage-invalid` (`A command is required, see --help`), exit 2; in text the missing configuration the binary's closure answers, or the help.
@@ -417,9 +419,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Added the initial toolkit: clap arguments and commands, printer, logger, prompt, spinner, table, account wizards, error reporting, validators and build helpers.
 
-[Unreleased]: https://github.com/pimalaya/himalaya/compare/v0.7.1..HEAD
-[0.7.1]: https://github.com/pimalaya/himalaya/compare/v0.7.0..v0.7.1
-[0.7.0]: https://github.com/pimalaya/himalaya/compare/v0.6.1..v0.7.0
+[Unreleased]: https://github.com/pimalaya/cli/compare/v0.8.0..HEAD
+[0.8.0]: https://github.com/pimalaya/cli/compare/v0.7.1..v0.8.0
+[0.7.1]: https://github.com/pimalaya/cli/compare/v0.7.0..v0.7.1
+[0.7.0]: https://github.com/pimalaya/cli/compare/v0.6.1..v0.7.0
 [0.6.1]: https://github.com/pimalaya/cli/compare/v0.6.0..v0.6.1
 [0.6.0]: https://github.com/pimalaya/cli/compare/v0.5.2..v0.6.0
 [0.5.2]: https://github.com/pimalaya/cli/compare/v0.5.1..v0.5.2
