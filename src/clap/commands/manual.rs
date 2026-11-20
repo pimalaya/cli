@@ -2,14 +2,14 @@
 
 use std::{fmt, fs, mem, path::PathBuf};
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result};
 use clap::{Command, Parser};
 use clap_mangen::Man;
 use log::debug;
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use crate::{clap::parsers::path_parser, printer::Printer};
+use crate::{clap::parsers::path_parser, error::usage_invalid, printer::Printer};
 
 /// Generate manual page for the given command(s).
 ///
@@ -19,6 +19,7 @@ use crate::{clap::parsers::path_parser, printer::Printer};
 /// redirection. Giving a directory instead writes one page per
 /// command in it, creating the directory if it does not exist.
 #[derive(Debug, Parser)]
+#[group(required = true, multiple = true)]
 pub struct ManualCommand {
     /// Command(s) for which manual page should be generated for.
     ///
@@ -55,7 +56,7 @@ impl ManualCommand {
 
         for cmd in &self.cmds {
             if !cmds.iter().any(|(name, _)| name == cmd) {
-                bail!("Cannot find command {cmd}");
+                return Err(usage_invalid(format!("Cannot find command {cmd}")));
             }
         }
 
@@ -67,9 +68,9 @@ impl ManualCommand {
             let mut cmds = cmds.into_iter();
 
             let (Some((cmd, command)), None) = (cmds.next(), cmds.next()) else {
-                bail!(
-                    "Writing several manual pages to the standard output is ambiguous, use --dir to generate them as files"
-                );
+                return Err(usage_invalid(
+                    "Writing several manual pages to the standard output is ambiguous, use --dir to generate them as files",
+                ));
             };
 
             let mut page = Vec::new();
@@ -194,7 +195,9 @@ mod tests {
 
     use clap::Command;
 
-    use crate::{clap::commands::manual::ManualCommand, printer::TestPrinter};
+    use crate::{
+        clap::commands::manual::ManualCommand, error::failure_status, printer::TestPrinter,
+    };
 
     /// A tree two levels deep, with a hidden subcommand.
     fn tree() -> Command {
@@ -301,6 +304,7 @@ mod tests {
             .unwrap_err();
 
         assert!(err.to_string().contains("use --dir"), "{err}");
+        assert_eq!(failure_status(&err), 2, "{err}");
     }
 
     #[test]
@@ -316,5 +320,6 @@ mod tests {
             .unwrap_err();
 
         assert_eq!(err.to_string(), "Cannot find command test-unknown");
+        assert_eq!(failure_status(&err), 2, "{err}");
     }
 }

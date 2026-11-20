@@ -28,7 +28,7 @@ use anyhow::{Context, Error, Result};
 use clap::{Command, CommandFactory, FromArgMatches, Parser, Subcommand};
 
 use crate::{
-    clap::args::JsonFlag,
+    clap::{args::JsonFlag, version_named_after_root},
     error::{ErrorCode, ErrorReport, partial_outcome_of, usage_error, usage_invalid},
     printer::{Printer, StdoutPrinter},
     session::claim_stdin,
@@ -122,7 +122,7 @@ impl Repl {
             .long_about(None);
 
         let versioned = grammar.get_version().is_some() || grammar.get_long_version().is_some();
-        let mut grammar = grammar.propagate_version(versioned);
+        let mut grammar = version_named_after_root(grammar.propagate_version(versioned));
 
         let mut line = Vec::new();
 
@@ -602,7 +602,7 @@ mod tests {
         assert_eq!(lines.len(), 4, "{stdout}");
         assert_eq!(lines[0], "app 1.2.3");
         assert_eq!(lines[1], "app v1.2.3 +feature");
-        assert!(lines[2].ends_with(" v1.2.3 +feature"), "{stdout}");
+        assert_eq!(lines[2], "app v1.2.3 +feature");
         assert_eq!(lines[3], "a");
         assert_eq!(stderr, "");
 

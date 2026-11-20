@@ -17,7 +17,8 @@
 //! never targets no_std.
 //!
 //! The clap module wires shared arguments and the completion, manual
-//! and JSON Schema commands into a binary's parser. The printer and error
+//! and JSON Schema commands into a binary's parser, and answers a run
+//! without a command. The printer and error
 //! modules render command output, events and failures to stdout, the
 //! output module holds the shapes every binary shares (bytes, pages),
 //! the log module initializes the logger, and the file module opens the

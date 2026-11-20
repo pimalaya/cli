@@ -46,7 +46,7 @@ A line whose command starts a session, `repl` or `mcp`, by its name, an alias or
 - THEN stdout holds the failure object coded `usage-invalid` with the error `Cannot start a session inside a session`, and the binary runs nothing
 
 ### Requirement: Help keeps JSON lines whole
-A line asking for help or the version SHALL print clap's text on stdout in a text session, and on stderr when the session's `--json` or a `--json` word of the line before any `--` is set, so stdout keeps one JSON value per line. The version SHALL be the one the command tree of the session carries (`#[command(version, long_version = ...)]` on the binary's command enum), `version` for `-V` and `long_version` for `--version`, reachable after any command as on the command line; a tree carrying none has no version flag, so a `--version` line is refused as any unknown flag is.
+A line asking for help or the version SHALL print clap's text on stdout in a text session, and on stderr when the session's `--json` or a `--json` word of the line before any `--` is set, so stdout keeps one JSON value per line. The version SHALL be the one the command tree of the session carries (`#[command(version, long_version = ...)]` on the binary's command enum), `version` for `-V` and `long_version` for `--version`, reachable after any command as on the command line and naming the binary there, not the command; a tree carrying none has no version flag, so a `--version` line is refused as any unknown flag is.
 
 #### Scenario: Help in a JSON session
 - GIVEN a session started with `--json`
@@ -55,8 +55,8 @@ A line asking for help or the version SHALL print clap's text on stdout in a tex
 
 #### Scenario: The version in a text session
 - GIVEN a text session of the binary `app` whose command enum carries the version `1.2.3` and the long version `v1.2.3 +imap`
-- WHEN the lines `-V` and `--version` are read
-- THEN stdout holds `app 1.2.3` then `app v1.2.3 +imap`
+- WHEN the lines `-V`, `--version` and `token show --version` are read
+- THEN stdout holds `app 1.2.3`, `app v1.2.3 +imap`, then `app v1.2.3 +imap` again
 
 ### Requirement: Help names the binary
 The help of a line SHALL render its usage line with the binary name before the command, as the command line does.

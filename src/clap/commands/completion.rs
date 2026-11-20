@@ -2,14 +2,14 @@
 
 use std::{fmt, fs, path::PathBuf};
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result};
 use clap::{Command, Parser, ValueEnum, value_parser};
 use clap_complete::Shell;
 use log::debug;
 use schemars::JsonSchema;
 use serde::{Serialize, Serializer};
 
-use crate::{clap::parsers::path_parser, printer::Printer};
+use crate::{clap::parsers::path_parser, error::usage_invalid, printer::Printer};
 
 /// Generate completion script for the given shell(s).
 ///
@@ -19,6 +19,7 @@ use crate::{clap::parsers::path_parser, printer::Printer};
 /// instead writes one script per shell in it, creating the directory
 /// if it does not exist.
 #[derive(Debug, Parser)]
+#[group(required = true, multiple = true)]
 pub struct CompletionCommand {
     /// Shell(s) for which completion script should be generated for.
     ///
@@ -45,9 +46,9 @@ impl CompletionCommand {
 
         let Some(dir) = self.dir else {
             let [shell] = shells[..] else {
-                bail!(
-                    "Writing several completion scripts to the standard output is ambiguous, use --dir to generate them as files"
-                );
+                return Err(usage_invalid(
+                    "Writing several completion scripts to the standard output is ambiguous, use --dir to generate them as files",
+                ));
             };
 
             let mut script = Vec::new();
@@ -137,7 +138,9 @@ mod tests {
     use clap::Command;
     use clap_complete::Shell;
 
-    use crate::{clap::commands::completion::CompletionCommand, printer::TestPrinter};
+    use crate::{
+        clap::commands::completion::CompletionCommand, error::failure_status, printer::TestPrinter,
+    };
 
     #[test]
     fn single_shell_script_goes_to_output() {
@@ -168,5 +171,6 @@ mod tests {
             .unwrap_err();
 
         assert!(err.to_string().contains("use --dir"), "{err}");
+        assert_eq!(failure_status(&err), 2, "{err}");
     }
 }

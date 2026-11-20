@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Added `clap::meet_bare_invocation`, answering a binary run without a command: under `--json` a failure coded `usage-invalid` (`A command is required, see --help`), exit 2; in text the missing configuration the binary's closure answers, or the help.
+- Added `account::BackendCheckTls`, `{provider, crypto, cert, clientCert}`, the TLS a backend connection is configured with.
+- Added `account::AccountCheck`, one account checked with its backend rows, and `AccountCheckOutput::ok`.
+- Added to the family contract (cairn/spec/output.md, error.md): a shared noun may carry the binary's own keys after the shared ones; an item error row may carry a `kind` tag; the queue listing prints `{actions, parked, errors}` and `queue show` the list row plus what a read carries, an unknown row failing `row-not-found`; a capability name may be `<noun>.<verb>.<argument>`.
+
+### Changed
+
+- **BREAKING**: Changed `account::AccountCheckOutput` to `{accounts: [{account, backends}]}`, a list of `AccountCheck`, printed one block per account.
+- **BREAKING**: Changed `account::BackendCheck` to carry `tls`, `null` from `BackendCheck::new` and for a local backend or a cleartext connection; its text appends `, TLS` and the parts set.
+- Changed `completion`, `manual` and `json-schema` to require their names or `--dir`, so clap refuses a bare run (exit 2); several names without `--dir` and an unknown name fail coded `usage-invalid`, exit 2.
+- Changed the family contract to reserve text events on a pipe to long-lived commands, and to let a result with item errors exit with its own documented status above 3.
+
+### Fixed
+
+- Fixed a refused value of an optional positional reading as clap's text in an MCP tool result: `[NAME]` is read as the property, as `<NAME>` is.
+- Fixed `--version` after a subcommand printing clap's dashed subcommand name (`app-account-list 1.2.3`), on the command line through `clap::parse` and in the REPL: it names the binary.
+
 ## [0.7.1] - 2026-11-19
 
 ### Added

@@ -79,12 +79,17 @@ A tool's `readOnlyHint` SHALL be `true` exactly when the tool, with the argument
 - THEN `page` is typed `integer`
 
 ### Requirement: A refused call names its arguments
-`Grammar::usage_error` SHALL turn clap's refusal of a call's argv into a failure coded `usage-invalid` naming each argument as the tool's input does, never clap's usage text: a missing argument as ``Missing argument `<name>` `` (``Missing arguments `<a>`, `<b>` `` for several), a refused value as ``Invalid value `<value>` for `<name>`: <reason>``, the reason being the value parser's message or ``the possible values are `<a>`, `<b>` ``. A refusal of another kind (a conflict between arguments), or naming an argument that is no property, SHALL keep clap's message as `error::usage_error` words it.
+`Grammar::usage_error` SHALL turn clap's refusal of a call's argv into a failure coded `usage-invalid` naming each argument as the tool's input does, never clap's usage text, whether clap renders it `--<long>`, `<NAME>` or, for an optional positional, `[NAME]`: a missing argument as ``Missing argument `<name>` `` (``Missing arguments `<a>`, `<b>` `` for several), a refused value as ``Invalid value `<value>` for `<name>`: <reason>``, the reason being the value parser's message or ``the possible values are `<a>`, `<b>` ``. A refusal of another kind (a conflict between arguments), or naming an argument that is no property, SHALL keep clap's message as `error::usage_error` words it.
 
 #### Scenario: A page that is no number
 - GIVEN a tool whose `page` argument is parsed by `value_parser!(u32).range(1..)`
 - WHEN a call gives `page` `"x"` and clap refuses its argv
 - THEN the tool result is an error whose failure object is coded `usage-invalid` and reads ``Invalid value `x` for `page`: invalid digit found in string``
+
+#### Scenario: A refused value of an optional positional
+- GIVEN a tool whose optional positional `transport` takes `socket` or `tcp`, which clap renders `[TRANSPORT]`
+- WHEN a call gives `transport` `"udp"` and clap refuses its argv
+- THEN the failure object reads ``Invalid value `udp` for `transport`: the possible values are `socket`, `tcp` ``, coded `usage-invalid`
 
 ### Requirement: A tool's command skips no positional
 `mcp::grammar::Grammar::new` SHALL panic on a command set with clap's `allow_missing_positional`, naming the tool, since its `argv` writes the positionals after `--`, where clap no longer skips a missing positional of such a command. A binary SHALL take an optional value standing before a required positional as a flag instead.

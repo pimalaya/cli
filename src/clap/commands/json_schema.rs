@@ -6,7 +6,7 @@ use std::{
     path::PathBuf,
 };
 
-use anyhow::{Result, bail};
+use anyhow::Result;
 use clap::{Command, Parser};
 use log::debug;
 use schemars::{JsonSchema, generate::SchemaSettings};
@@ -18,6 +18,7 @@ use crate::{
         commands::{completion::CompletionOutput, manual::ManualOutput},
         parsers::path_parser,
     },
+    error::usage_invalid,
     printer::Printer,
 };
 
@@ -289,6 +290,7 @@ fn is_object(root: &Value, schema: &Value) -> bool {
 /// redirection. Giving a directory instead writes one schema per
 /// command in it, creating the directory if it does not exist.
 #[derive(Debug, Parser)]
+#[group(required = true, multiple = true)]
 pub struct JsonSchemaCommand {
     /// Command(s) for which JSON Schema should be generated for.
     ///
@@ -316,7 +318,7 @@ impl JsonSchemaCommand {
 
         for cmd in &self.cmds {
             if !schemas.contains_key(cmd) {
-                bail!("Cannot find command {cmd}");
+                return Err(usage_invalid(format!("Cannot find command {cmd}")));
             }
         }
 
@@ -328,9 +330,9 @@ impl JsonSchemaCommand {
             let mut schemas = schemas.into_iter();
 
             let (Some((cmd, schema)), None) = (schemas.next(), schemas.next()) else {
-                bail!(
-                    "Writing several JSON Schemas to the standard output is ambiguous, use --dir to generate them as files"
-                );
+                return Err(usage_invalid(
+                    "Writing several JSON Schemas to the standard output is ambiguous, use --dir to generate them as files",
+                ));
             };
 
             debug!("generated {cmd} JSON Schema");
@@ -416,7 +418,7 @@ mod tests {
     use clap::Command;
     use serde_json::json;
 
-    use crate::{clap::commands::json_schema::*, printer::TestPrinter};
+    use crate::{clap::commands::json_schema::*, error::failure_status, printer::TestPrinter};
 
     fn registry(version: &'static str) -> JsonSchemaRegistry {
         JsonSchemaRegistry {
@@ -490,6 +492,7 @@ mod tests {
             .unwrap_err();
 
         assert!(err.to_string().contains("use --dir"), "{err}");
+        assert_eq!(failure_status(&err), 2, "{err}");
     }
 
     #[test]
@@ -504,6 +507,7 @@ mod tests {
             .unwrap_err();
 
         assert_eq!(err.to_string(), "Cannot find command test-c");
+        assert_eq!(failure_status(&err), 2, "{err}");
     }
 
     #[test]

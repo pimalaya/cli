@@ -274,7 +274,6 @@ impl Grammar {
     ///
     /// [`usage_error`]: crate::error::usage_error
     pub fn usage_error(&self, err: &clap::Error) -> Error {
-        // clap renders `--page <PAGE>` or `<CARD-ID>`.
         let property = |rendered: &str| {
             let rendered = rendered.trim_start_matches('[');
 
@@ -284,7 +283,8 @@ impl Grammar {
                     self.args.iter().find(|arg| arg.long.as_deref() == long)
                 }
                 None => {
-                    let value = rendered.strip_prefix('<')?.split('>').next()?;
+                    let value = rendered.trim_start_matches('<');
+                    let value = value.split(['>', ']']).next()?;
                     let name = value.to_lowercase();
                     let mut positionals = self.args.iter().filter(|arg| arg.long.is_none());
                     positionals.find(|arg| arg.name == name)
@@ -946,6 +946,32 @@ mod tests {
             assert_eq!(report["error"], message);
             assert_eq!(report["code"], "usage-invalid");
         }
+    }
+
+    #[test]
+    fn a_refused_value_of_an_optional_positional_names_its_property() {
+        let mut tree = Command::new("app").no_binary_name(true).subcommand(
+            Command::new("get").arg(
+                Arg::new("transport")
+                    .value_name("TRANSPORT")
+                    .value_parser(["socket", "tcp"]),
+            ),
+        );
+        tree.build();
+
+        let leaf = tree.find_subcommand("get").unwrap();
+        let grammar = Grammar::new(&["get"], leaf);
+        let argv = grammar
+            .argv(&arguments(json!({ "transport": "udp" })))
+            .unwrap();
+        let err = tree.clone().try_get_matches_from(&argv).unwrap_err();
+        let report = refusal(grammar.usage_error(&err));
+
+        assert_eq!(
+            report["error"],
+            "Invalid value `udp` for `transport`: the possible values are `socket`, `tcp`"
+        );
+        assert_eq!(report["code"], "usage-invalid");
     }
 
     #[test]
