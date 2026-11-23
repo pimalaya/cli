@@ -232,6 +232,11 @@ pimalaya-cli SHALL NOT re-export an item, its own or a dependency's: a binary SH
 - WHEN a binary runs with `--log-file trace.log`
 - THEN it fails with an error naming `trace.log`, and the link's target is not created
 
+#### Scenario: A link to an existing file at the log path
+- GIVEN a symbolic link `trace.log` pointing to an existing file
+- WHEN a binary runs with `--log-file trace.log`
+- THEN it fails with an error naming `trace.log`, and the target is not written: the flag's parser shell-expands the path without resolving it (src/log.rs `a_log_file_flag_never_follows_a_symlink_to_a_file`)
+
 #### Scenario: A new log file
 - GIVEN a umask of 022 and no file at `trace.log`
 - WHEN a binary runs with `--log-file trace.log`

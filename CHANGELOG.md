@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- `--log-file` refuses a symbolic link to an existing file, as its help says: the flag's parser no longer canonicalizes the path, which resolved the link before the `O_NOFOLLOW` open saw it.
+
 ## [0.8.0] - 2026-11-20
 
 ### Added

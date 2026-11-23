@@ -5,15 +5,19 @@ use std::{env, path::PathBuf};
 /// Shell-expands then canonicalizes a path argument, falling back to
 /// the expanded path when it does not yet exist.
 pub fn path_parser(path: &str) -> Result<PathBuf, String> {
+    let path = expanded_path_parser(path)?;
+    Ok(path.canonicalize().unwrap_or(path))
+}
+
+/// Shell-expands a path argument without resolving it, so a symbolic
+/// link stays the link: the parser of a path opened `O_NOFOLLOW`.
+pub fn expanded_path_parser(path: &str) -> Result<PathBuf, String> {
     // NOTE: `shellexpand::full` needs `tilde`, a feature pinning dirs below 7.
     let home_dir = || dirs::home_dir()?.into_os_string().into_string().ok();
     let context = |name: &str| env::var(name).map(Some);
 
     match shellexpand::full_with_context(path, home_dir, context) {
-        Ok(path) => {
-            let path = PathBuf::from(&*path);
-            Ok(path.canonicalize().unwrap_or(path))
-        }
+        Ok(path) => Ok(PathBuf::from(&*path)),
         Err(err) => Err(err.to_string()),
     }
 }

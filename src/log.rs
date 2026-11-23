@@ -64,7 +64,9 @@ mod tests {
         process,
     };
 
-    use crate::log::open_log_file;
+    use clap::Parser;
+
+    use crate::{clap::args::LogFlags, log::open_log_file};
 
     fn scratch(name: &str) -> PathBuf {
         let dir = env::temp_dir().join(format!("pimalaya-cli-log-{name}-{}", process::id()));
@@ -98,6 +100,24 @@ mod tests {
 
         assert!(!created);
         assert!(err.to_string().contains("trace.log"), "{err}");
+    }
+
+    /// A link to an existing file, given as `--log-file`, is refused: the
+    /// flag's parser keeps the link rather than resolve it to its target.
+    #[test]
+    fn a_log_file_flag_never_follows_a_symlink_to_a_file() {
+        let dir = scratch("flag-symlink");
+        let target = dir.join("real.log");
+        let link = dir.join("trace.log");
+        fs::write(&target, "").unwrap();
+        symlink(&target, &link).unwrap();
+
+        let args = ["app", "--log-file", link.to_str().unwrap()];
+        let flags = LogFlags::try_parse_from(args).unwrap();
+        let opened = open_log_file(flags.file.as_ref().unwrap());
+        fs::remove_dir_all(&dir).unwrap();
+
+        assert!(opened.is_err(), "{:?}", flags.file);
     }
 
     #[test]
