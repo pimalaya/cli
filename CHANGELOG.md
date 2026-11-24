@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-11-24
+
 ### Fixed
 
 - `--log-file` refuses a symbolic link to an existing file, as its help says: the flag's parser no longer canonicalizes the path, which resolved the link before the `O_NOFOLLOW` open saw it.
@@ -423,7 +425,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Added the initial toolkit: clap arguments and commands, printer, logger, prompt, spinner, table, account wizards, error reporting, validators and build helpers.
 
-[Unreleased]: https://github.com/pimalaya/cli/compare/v0.8.0..HEAD
+[Unreleased]: https://github.com/pimalaya/cli/compare/v0.8.1..HEAD
+[0.8.1]: https://github.com/pimalaya/cli/compare/v0.8.0..v0.8.1
 [0.8.0]: https://github.com/pimalaya/cli/compare/v0.7.1..v0.8.0
 [0.7.1]: https://github.com/pimalaya/cli/compare/v0.7.0..v0.7.1
 [0.7.0]: https://github.com/pimalaya/cli/compare/v0.6.1..v0.7.0
